@@ -1,25 +1,27 @@
 // MapViewModel.swift
-// 地图视图模型 - Phase 1版本
-// 见 PHASE_V0_SPEC.md, PHASE_V1_SPEC.md
+// 地图视图模型 - Phase 2版本
+// 见 PHASE_V0_SPEC.md, PHASE_V1_SPEC.md, PHASE_V2_SPEC.md
 
 import Foundation
 import Combine
 
 /// 地图视图模型
-/// Phase 0: 单原点 + 单终点
-/// Phase 1: 罗盘模式 + 定位按钮
+/// Phase 2: 多原点多终点 + 案例管理 + GPS原点
 class MapViewModel: ObservableObject {
 
     // MARK: - Published Properties
 
-    /// 当前原点
-    @Published var origin: GeoPoint?
+    /// 当前案例ID
+    @Published var currentCaseId: Int?
 
-    /// 当前终点
-    @Published var destination: GeoPoint?
+    /// 当前选中的原点
+    @Published var selectedOrigin: GeoPoint?
 
-    /// 连线信息
-    @Published var connection: Connection?
+    /// 当前选中的终点列表
+    @Published var selectedDestinations: [GeoPoint] = []
+
+    /// 连线信息列表
+    @Published var connections: [Connection] = []
 
     /// 是否显示连线信息面板
     @Published var showConnectionPanel: Bool = false
@@ -39,14 +41,71 @@ class MapViewModel: ObservableObject {
     /// 罗盘坐标（锁定模式下使用）
     @Published var compassCoordinate: WGS84Coordinate?
 
+    /// 显示加点对话框
+    @Published var showAddPointDialog: Bool = false
+
+    /// 显示原点选择器
+    @Published var showOriginSelector: Bool = false
+
+    /// 显示终点选择器
+    @Published var showDestinationSelector: Bool = false
+
+    /// 错误消息
+    @Published var errorMessage: String?
+
     // MARK: - Private Properties
 
     private var mapController: MapControllerProtocol?
-    private var pointCounter: Int = 0
+    private let service: FengShuiService
+    private var cancellables = Set<AnyCancellable>()
+    private var gpsOrigin: GPSOrigin?
 
     // MARK: - Initialization
 
-    init() {}
+    init() {
+        do {
+            self.service = try FengShuiService()
+        } catch {
+            self.service = try! FengShuiService()
+            self.errorMessage = "初始化失败: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - GPS Origin Management
+
+    /// 设置位置服务（用于GPS原点）
+    func setupLocationService(_ locationService: LocationService) {
+        // 监听位置更新
+        locationService.$currentLocation
+            .compactMap { $0 }
+            .sink { [weak self] coordinate in
+                self?.updateGPSOrigin(coordinate: coordinate)
+            }
+            .store(in: &cancellables)
+    }
+
+    /// 更新GPS原点坐标
+    private func updateGPSOrigin(coordinate: WGS84Coordinate) {
+        guard let caseId = currentCaseId else { return }
+
+        // 更新或创建GPS原点
+        if gpsOrigin == nil {
+            gpsOrigin = GPSOrigin(caseId: caseId, coordinate: coordinate)
+        } else {
+            gpsOrigin?.coordinate = coordinate
+        }
+
+        // 如果当前选中的是GPS原点，重新计算连线
+        if let origin = selectedOrigin, origin.isGPSOrigin {
+            selectedOrigin = gpsOrigin?.toGeoPoint()
+            calculateConnections()
+
+            // 更新罗盘位置
+            if compassMode == .locked {
+                renderCompass(at: coordinate)
+            }
+        }
+    }
 
     // MARK: - Map Controller Setup
 
@@ -69,74 +128,140 @@ class MapViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Point Management
+
+    /// 显示加点对话框
+    func showAddPoint() {
+        showAddPointDialog = true
+    }
+
+    /// 添加点位
+    func addPoint(name: String, caseId: Int, pointType: PointType) {
+        guard let coordinate = mapCenterCoordinate else { return }
+
+        do {
+            let point = try service.createPoint(
+                caseId: caseId,
+                name: name,
+                coordinate: coordinate,
+                pointType: pointType
+            )
+
+            // 设置当前案例
+            currentCaseId = caseId
+
+            // 添加标记
+            let icon: MarkerIcon = pointType == .origin ? .origin : .destination
+            mapController?.addMarker(id: String(point.id), at: coordinate, icon: icon)
+
+            // 如果是原点，自动选中
+            if pointType == .origin {
+                selectOrigin(point)
+            }
+
+        } catch let error as TrialLimitError {
+            errorMessage = error.message
+        } catch let error as DuplicatePointError {
+            errorMessage = error.message
+        } catch {
+            errorMessage = "添加点位失败: \(error.localizedDescription)"
+        }
+    }
+
+    /// 选择原点
+    func selectOrigin(_ origin: GeoPoint) {
+        selectedOrigin = origin
+        currentCaseId = origin.caseId
+
+        // 切换到锁定模式
+        compassMode = .locked
+        compassCoordinate = origin.coordinate
+
+        // 移动相机到原点
+        mapController?.moveCamera(to: origin.coordinate, zoom: 16, animated: true)
+
+        // 渲染罗盘
+        renderCompass(at: origin.coordinate)
+
+        // 加载该案例的所有终点
+        loadDestinationsForCurrentCase()
+    }
+
+    /// 选择终点（多选）
+    func selectDestinations(_ destinations: [GeoPoint], origin: GeoPoint) {
+        selectedOrigin = origin
+        selectedDestinations = destinations
+        currentCaseId = origin.caseId
+
+        // 切换到锁定模式
+        compassMode = .locked
+        compassCoordinate = origin.coordinate
+
+        // 移动相机到原点
+        mapController?.moveCamera(to: origin.coordinate, zoom: 16, animated: true)
+
+        // 渲染罗盘
+        renderCompass(at: origin.coordinate)
+
+        // 计算并显示连线
+        calculateConnections()
+    }
+
+    /// 加载当前案例的所有终点
+    private func loadDestinationsForCurrentCase() {
+        guard let caseId = currentCaseId else { return }
+
+        do {
+            let destinations = try service.getDestinationsByCase(caseId)
+            selectedDestinations = destinations
+            calculateConnections()
+        } catch {
+            errorMessage = "加载终点失败: \(error.localizedDescription)"
+        }
+    }
+
+    // MARK: - Connection Calculation
+
+    /// 计算所有连线
+    private func calculateConnections() {
+        guard let origin = selectedOrigin else { return }
+
+        // 清除旧连线
+        connections.removeAll()
+        mapController?.removeAllPolylines()
+
+        // 计算每个终点的连线
+        for (index, destination) in selectedDestinations.enumerated() {
+            let connection = service.calculateConnection(from: origin, to: destination)
+            connections.append(connection)
+
+            // 获取连线颜色
+            let color = ConnectionColorHelper.getColor(at: index)
+
+            // 绘制连线
+            let style = PolylineStyle(
+                color: colorToHex(color),
+                width: 12.0,
+                isDashed: false
+            )
+            mapController?.addPolyline(
+                id: "connection_\(destination.id)",
+                points: [origin.coordinate, destination.coordinate],
+                style: style
+            )
+        }
+
+        showConnectionPanel = !connections.isEmpty
+    }
+
     // MARK: - User Actions
-
-    /// 添加原点（通过屏幕中心或加号按钮）
-    func addOriginAtCenter() {
-        guard let center = mapCenterCoordinate else { return }
-        addOrigin(at: center)
-    }
-
-    /// 添加原点
-    func addOrigin(at coordinate: WGS84Coordinate) {
-        pointCounter += 1
-        let point = GeoPoint(
-            name: "原点\(pointCounter)",
-            coordinate: coordinate,
-            pointType: .origin
-        )
-        origin = point
-
-        // 添加标记
-        mapController?.addMarker(id: point.id, at: coordinate, icon: .origin)
-
-        // 如果已有终点，计算连线
-        if let dest = destination {
-            calculateConnection(from: point, to: dest)
-            // 罗盘出现在原点处
-            renderCompass(at: coordinate)
-        } else {
-            // 罗盘出现在原点处
-            renderCompass(at: coordinate)
-        }
-    }
-
-    /// 添加终点（通过屏幕中心或加号按钮）
-    func addDestinationAtCenter() {
-        guard let center = mapCenterCoordinate else { return }
-        addDestination(at: center)
-    }
-
-    /// 添加终点
-    func addDestination(at coordinate: WGS84Coordinate) {
-        pointCounter += 1
-        let point = GeoPoint(
-            name: "终点\(pointCounter)",
-            coordinate: coordinate,
-            pointType: .destination
-        )
-        destination = point
-
-        // 添加标记
-        mapController?.addMarker(id: point.id, at: coordinate, icon: .destination)
-
-        // 如果已有原点，计算连线
-        if let orig = origin {
-            calculateConnection(from: orig, to: point)
-            // 视角移回原点
-            mapController?.moveCamera(to: orig.coordinate, zoom: currentZoom, animated: true)
-            // 罗盘出现在原点处
-            renderCompass(at: orig.coordinate)
-        }
-    }
 
     /// 清除所有
     func clearAll() {
-        origin = nil
-        destination = nil
-        connection = nil
+        selectedOrigin = nil
+        selectedDestinations.removeAll()
+        connections.removeAll()
         showConnectionPanel = false
-        pointCounter = 0
 
         mapController?.removeAllMarkers()
         mapController?.removeAllOverlays()
@@ -165,7 +290,7 @@ class MapViewModel: ObservableObject {
     /// 定位到当前位置（Phase 1）
     func moveToCurrentLocation(userLocation: WGS84Coordinate?) {
         guard let location = userLocation else {
-            // TODO: 显示提示"无法获取当前位置"
+            errorMessage = "无法获取当前位置"
             return
         }
 
@@ -181,7 +306,6 @@ class MapViewModel: ObservableObject {
             compassMode = .unlocked
             // 移除GroundOverlay
             mapController?.removeOverlay(id: "compass")
-            // 罗盘将在MapView中以UIView形式显示在屏幕中心
 
         case .unlocked:
             // 切换到锁定模式
@@ -194,12 +318,68 @@ class MapViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Selectors
+
+    /// 显示原点选择器
+    func showOriginSelectorDialog() {
+        guard let caseId = currentCaseId else {
+            errorMessage = "请先选择案例"
+            return
+        }
+
+        do {
+            let origins = try service.getOriginsByCase(caseId)
+            if origins.isEmpty {
+                errorMessage = "暂无原点，请在堪舆管理中添加"
+            } else {
+                showOriginSelector = true
+            }
+        } catch {
+            errorMessage = "加载原点失败: \(error.localizedDescription)"
+        }
+    }
+
+    /// 显示终点选择器
+    func showDestinationSelectorDialog() {
+        guard let caseId = currentCaseId else {
+            errorMessage = "请先选择案例"
+            return
+        }
+
+        do {
+            let destinations = try service.getDestinationsByCase(caseId)
+            if destinations.isEmpty {
+                errorMessage = "暂无终点，请在堪舆管理中添加"
+            } else {
+                showDestinationSelector = true
+            }
+        } catch {
+            errorMessage = "加载终点失败: \(error.localizedDescription)"
+        }
+    }
+
+    /// 获取当前案例的原点列表
+    func getOriginsForCurrentCase() -> [GeoPoint] {
+        guard let caseId = currentCaseId else { return [] }
+        return (try? service.getOriginsByCase(caseId)) ?? []
+    }
+
+    /// 获取当前案例的终点列表
+    func getDestinationsForCurrentCase() -> [GeoPoint] {
+        guard let caseId = currentCaseId else { return [] }
+        return (try? service.getDestinationsByCase(caseId)) ?? []
+    }
+
+    /// 获取所有案例
+    func getAllCases() -> [FengShuiCase] {
+        return (try? service.getAllCases()) ?? []
+    }
+
     // MARK: - Private Methods
 
     /// 处理地图点击
     private func handleMapTap(at coordinate: WGS84Coordinate) {
-        // Phase 0: 地图点击不添加点，只通过加号按钮或十字指示添加
-        // 保留此方法以便后续扩展
+        // Phase 2: 地图点击不添加点，只通过加号按钮或十字指示添加
     }
 
     /// 处理标记点击
@@ -207,62 +387,12 @@ class MapViewModel: ObservableObject {
         showConnectionPanel.toggle()
     }
 
-    /// 计算连线信息
-    private func calculateConnection(from origin: GeoPoint, to destination: GeoPoint) {
-        // 计算方位角（Rhumb Line）
-        let bearing = FengShuiEngine.calculateRhumbBearing(
-            from: origin.coordinate,
-            to: destination.coordinate
-        )
-
-        // 计算距离（Vincenty）
-        let distance = FengShuiEngine.calculateVincentyDistance(
-            from: origin.coordinate,
-            to: destination.coordinate
-        )
-
-        // 映射到24山
-        let mountain = Mountain.fromBearing(bearing)
-
-        // 映射到八卦
-        let trigram = Trigram.fromBearing(bearing)
-
-        // 映射到五行
-        let wuxing = WuXing.fromMountain(mountain)
-
-        // 创建连线信息
-        connection = Connection(
-            origin: origin,
-            destination: destination,
-            distance: distance,
-            bearing: bearing,
-            mountain: mountain,
-            trigram: trigram,
-            wuxing: wuxing
-        )
-
-        // 绘制连线（红色，12像素宽）
-        let style = PolylineStyle(
-            color: 0xFFE53935,  // #E53935 红色
-            width: 12.0,
-            isDashed: false
-        )
-        mapController?.addPolyline(
-            id: "connection",
-            points: [origin.coordinate, destination.coordinate],
-            style: style
-        )
-
-        // 显示信息面板
-        showConnectionPanel = true
-    }
-
     /// 渲染罗盘（GroundOverlay）
     private func renderCompass(at coordinate: WGS84Coordinate) {
         // 生成罗盘图片
         let compassImage = CompassImageGenerator.generateCompassImage(size: 1000)
 
-        // 罗盘半径（米）- 根据缩放级别调整
+        // 罗盘半径（米）
         let radiusMeters: Double = 100.0
 
         // 添加GroundOverlay
@@ -272,5 +402,27 @@ class MapViewModel: ObservableObject {
             image: compassImage,
             radiusMeters: radiusMeters
         )
+    }
+
+    /// 颜色转十六进制
+    private func colorToHex(_ color: UIColor) -> UInt32 {
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+
+        color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+
+        let r = UInt32(red * 255)
+        let g = UInt32(green * 255)
+        let b = UInt32(blue * 255)
+        let a = UInt32(alpha * 255)
+
+        return (a << 24) | (r << 16) | (g << 8) | b
+    }
+
+    /// 清除错误消息
+    func clearError() {
+        errorMessage = nil
     }
 }

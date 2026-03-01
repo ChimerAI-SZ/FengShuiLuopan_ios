@@ -1,6 +1,6 @@
 // MapView.swift
 // 地图视图 - SwiftUI封装
-// 见 PHASE_V0_SPEC.md, PHASE_V1_SPEC.md
+// 见 PHASE_V0_SPEC.md, PHASE_V1_SPEC.md, PHASE_V2_SPEC.md
 
 import SwiftUI
 import MAMapKit
@@ -26,6 +26,9 @@ struct MapView: View {
                     if let controller = mapController {
                         viewModel.setMapController(controller)
                     }
+
+                    // 设置位置服务（GPS原点）
+                    viewModel.setupLocationService(locationService)
 
                     // 请求定位权限
                     locationService.requestLocationPermission()
@@ -80,6 +83,16 @@ struct MapView: View {
                             viewModel.toggleCompassMode()
                         }
 
+                        // 原点按钮（Phase 2）
+                        ControlButton(icon: "mappin.circle.fill", backgroundColor: .red) {
+                            viewModel.showOriginSelectorDialog()
+                        }
+
+                        // 终点按钮（Phase 2）
+                        ControlButton(icon: "mappin", backgroundColor: .blue) {
+                            viewModel.showDestinationSelectorDialog()
+                        }
+
                         // 清除按钮
                         ControlButton(icon: "trash", backgroundColor: .red) {
                             viewModel.clearAll()
@@ -90,22 +103,51 @@ struct MapView: View {
                 Spacer()
             }
 
-            // 连线信息面板
-            if viewModel.showConnectionPanel, let connection = viewModel.connection {
+            // 连线信息面板（Phase 2：支持多连线）
+            if viewModel.showConnectionPanel, !viewModel.connections.isEmpty {
                 VStack {
                     Spacer()
-                    ConnectionInfoPanel(connection: connection, onClose: {
-                        viewModel.showConnectionPanel = false
-                    })
+                    MultiConnectionInfoPanel(
+                        connections: viewModel.connections,
+                        onClose: {
+                            viewModel.showConnectionPanel = false
+                        }
+                    )
                     .padding()
                 }
             }
 
-            // 终点信息覆盖层
-            if let destination = viewModel.destination,
-               let connection = viewModel.connection {
+            // 加点对话框（Phase 2）
+            if viewModel.showAddPointDialog {
+                Color.black.opacity(0.3)
+                    .edgesIgnoringSafeArea(.all)
+                    .onTapGesture {
+                        viewModel.showAddPointDialog = false
+                    }
+            }
+
+            // 原点选择器（Phase 2）
+            if viewModel.showOriginSelector {
+                Color.black.opacity(0.3)
+                    .edgesIgnoringSafeArea(.all)
+                    .onTapGesture {
+                        viewModel.showOriginSelector = false
+                    }
+            }
+
+            // 终点选择器（Phase 2）
+            if viewModel.showDestinationSelector {
+                Color.black.opacity(0.3)
+                    .edgesIgnoringSafeArea(.all)
+                    .onTapGesture {
+                        viewModel.showDestinationSelector = false
+                    }
+            }
+
+            // 终点信息覆盖层（Phase 2：支持多终点）
+            ForEach(Array(viewModel.connections.enumerated()), id: \.offset) { index, connection in
                 DestinationOverlay(
-                    destination: destination,
+                    destination: connection.destination,
                     connection: connection,
                     mapController: mapController
                 )
@@ -122,25 +164,56 @@ struct MapView: View {
                         .background(Color.black.opacity(0.7))
                         .cornerRadius(8)
                         .padding(.top, 50)
+                    Spacer()\n                }\n            }\n\n            // 错误提示（Phase 2）
+            if let errorMessage = viewModel.errorMessage {
+                VStack {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundColor(.white)
+                        .padding(8)
+                        .background(Color.red.opacity(0.8))
+                        .cornerRadius(8)
+                        .padding(.top, 50)
                     Spacer()
+                }
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        viewModel.clearError()
+                    }
                 }
             }
         }
+        .sheet(isPresented: $viewModel.showAddPointDialog) {
+            AddPointDialog(
+                coordinate: viewModel.mapCenterCoordinate ?? WGS84Coordinate(latitude: 39.9, longitude: 116.4),
+                cases: viewModel.getAllCases(),
+                onAdd: { name, caseId, pointType in
+                    viewModel.addPoint(name: name, caseId: caseId, pointType: pointType)
+                }
+            )
+        }
+        .sheet(isPresented: $viewModel.showOriginSelector) {
+            OriginSelectorView(
+                origins: viewModel.getOriginsForCurrentCase(),
+                onSelect: { origin in
+                    viewModel.selectOrigin(origin)
+                }
+            )
+        }
+        .sheet(isPresented: $viewModel.showDestinationSelector) {
+            DestinationSelectorView(
+                destinations: viewModel.getDestinationsForCurrentCase(),
+                onConfirm: { destinations, origin in
+                    viewModel.selectDestinations(destinations, origin: origin)
+                },
+                origins: viewModel.getOriginsForCurrentCase()
+            )
+        }
     }
 
-    /// 处理加号按钮点击
+    /// 处理加号按钮点击（Phase 2）
     private func handleAddButtonTap() {
-        if viewModel.origin == nil {
-            // 添加原点
-            viewModel.addOriginAtCenter()
-        } else if viewModel.destination == nil {
-            // 添加终点
-            viewModel.addDestinationAtCenter()
-        } else {
-            // 已有原点和终点，清除并重新开始
-            viewModel.clearAll()
-            viewModel.addOriginAtCenter()
-        }
+        viewModel.showAddPoint()
     }
 }
 
