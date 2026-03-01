@@ -1,12 +1,13 @@
 // MapViewModel.swift
-// 地图视图模型 - Phase 0版本（单原点单终点）
-// 见 PHASE_V0_SPEC.md
+// 地图视图模型 - Phase 1版本
+// 见 PHASE_V0_SPEC.md, PHASE_V1_SPEC.md
 
 import Foundation
 import Combine
 
 /// 地图视图模型
 /// Phase 0: 单原点 + 单终点
+/// Phase 1: 罗盘模式 + 定位按钮
 class MapViewModel: ObservableObject {
 
     // MARK: - Published Properties
@@ -31,6 +32,12 @@ class MapViewModel: ObservableObject {
 
     /// 地图类型
     @Published var mapType: MapLayerType = .standard
+
+    /// 罗盘模式（Phase 1）
+    @Published var compassMode: CompassMode = .locked
+
+    /// 罗盘坐标（锁定模式下使用）
+    @Published var compassCoordinate: WGS84Coordinate?
 
     // MARK: - Private Properties
 
@@ -153,6 +160,38 @@ class MapViewModel: ObservableObject {
         guard let center = mapCenterCoordinate else { return }
         let newZoom = max(currentZoom - 1, 3)
         mapController?.moveCamera(to: center, zoom: newZoom, animated: true)
+    }
+
+    /// 定位到当前位置（Phase 1）
+    func moveToCurrentLocation(userLocation: WGS84Coordinate?) {
+        guard let location = userLocation else {
+            // TODO: 显示提示"无法获取当前位置"
+            return
+        }
+
+        // 移动相机到用户位置
+        mapController?.moveCamera(to: location, zoom: 16, animated: true)
+    }
+
+    /// 切换罗盘模式（Phase 1）
+    func toggleCompassMode() {
+        switch compassMode {
+        case .locked:
+            // 切换到解锁模式
+            compassMode = .unlocked
+            // 移除GroundOverlay
+            mapController?.removeOverlay(id: "compass")
+            // 罗盘将在MapView中以UIView形式显示在屏幕中心
+
+        case .unlocked:
+            // 切换到锁定模式
+            compassMode = .locked
+            // 将罗盘锁定在当前屏幕中心位置
+            if let center = mapCenterCoordinate {
+                compassCoordinate = center
+                renderCompass(at: center)
+            }
+        }
     }
 
     // MARK: - Private Methods

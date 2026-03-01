@@ -1,6 +1,6 @@
 // GeoPoint.swift
 // 地理点数据模型
-// 见 PHASE_V0_SPEC.md
+// 见 PHASE_V0_SPEC.md, PHASE_V1_SPEC.md
 
 import Foundation
 
@@ -8,6 +8,13 @@ import Foundation
 enum PointType: String, Codable {
     case origin      // 原点
     case destination // 终点
+    case gpsOrigin   // GPS原点（Phase 1预留）
+}
+
+/// 罗盘模式（Phase 1）
+enum CompassMode: String, Codable {
+    case locked   // 锁定模式：罗盘固定在地理坐标
+    case unlocked // 解锁模式：罗盘固定在屏幕中心
 }
 
 /// 地理点（原点或终点）
@@ -47,5 +54,23 @@ struct Connection {
     /// 格式化方位角显示
     var formattedBearing: String {
         return String(format: "%.1f°", bearing)
+    }
+}
+
+/// GPS原点（Phase 1预留，Phase 2完整实现）
+struct GPSOrigin {
+    static let fixedID = "gps_location_origin"
+    static let fixedName = "当前位置"
+
+    let id: String
+    var coordinate: WGS84Coordinate  // 实时更新
+    let name: String
+    let isSystemGenerated: Bool
+
+    init(coordinate: WGS84Coordinate) {
+        self.id = GPSOrigin.fixedID
+        self.coordinate = coordinate
+        self.name = GPSOrigin.fixedName
+        self.isSystemGenerated = true
     }
 }

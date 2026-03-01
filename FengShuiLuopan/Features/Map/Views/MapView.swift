@@ -1,6 +1,6 @@
 // MapView.swift
 // 地图视图 - SwiftUI封装
-// 见 PHASE_V0_SPEC.md
+// 见 PHASE_V0_SPEC.md, PHASE_V1_SPEC.md
 
 import SwiftUI
 import MAMapKit
@@ -34,6 +34,11 @@ struct MapView: View {
             // 屏幕中心十字指示
             CrosshairView()
 
+            // 解锁模式下的罗盘（屏幕中心）
+            if viewModel.compassMode == .unlocked {
+                CompassOverlayView()
+            }
+
             // 右侧控制按钮区
             VStack {
                 HStack {
@@ -60,6 +65,19 @@ struct MapView: View {
                             backgroundColor: .gray
                         ) {
                             viewModel.toggleMapType()
+                        }
+
+                        // 定位按钮（Phase 1）
+                        ControlButton(icon: "location.fill", backgroundColor: .green) {
+                            viewModel.moveToCurrentLocation(userLocation: locationService.currentLocation)
+                        }
+
+                        // 罗盘模式切换按钮（Phase 1）
+                        ControlButton(
+                            icon: viewModel.compassMode == .locked ? "lock.fill" : "lock.open.fill",
+                            backgroundColor: .orange
+                        ) {
+                            viewModel.toggleCompassMode()
                         }
 
                         // 清除按钮
@@ -123,6 +141,18 @@ struct MapView: View {
             viewModel.clearAll()
             viewModel.addOriginAtCenter()
         }
+    }
+}
+
+// MARK: - Compass Overlay View (Unlocked Mode)
+
+/// 解锁模式下的罗盘覆盖层（固定在屏幕中心）
+struct CompassOverlayView: View {
+    var body: some View {
+        Image(uiImage: CompassImageGenerator.generateCompassImage(size: 200))
+            .resizable()
+            .frame(width: 200, height: 200)
+            .opacity(0.7)
     }
 }
 
