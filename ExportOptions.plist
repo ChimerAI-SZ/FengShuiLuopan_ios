@@ -8,13 +8,6 @@
     <string>66JTX3GW7T</string>
     <key>signingStyle</key>
     <string>manual</string>
-    <key>signingCertificate</key>
-    <string>Apple Development</string>
-    <key>provisioningProfiles</key>
-    <dict>
-        <key>com.fengshuizohar.ios.dev</key>
-        <string>FengShuiLuopan Dev</string>
-    </dict>
     <key>compileBitcode</key>
     <false/>
     <key>uploadSymbols</key>
