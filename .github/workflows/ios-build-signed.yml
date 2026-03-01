@@ -499,13 +499,30 @@ jobs:
 
         # 解码并保存配置文件
         PROVISION_PATH=$RUNNER_TEMP/profile.mobileprovision
-        echo -n "$PROVISION_PROFILE_BASE64" | base64 --decode -o $PROVISION_PATH
+        echo -n "$PROVISION_PROFILE_BASE64" | base64 --decode > $PROVISION_PATH
 
-        # 获取配置文件UUID
-        PP_UUID=$(grep -a -A 1 'UUID' $PROVISION_PATH | grep -o '[-A-F0-9]\{36\}')
+        # 验证文件是否成功解码
+        if [ ! -f "$PROVISION_PATH" ] || [ ! -s "$PROVISION_PATH" ]; then
+          echo "❌ Error: Failed to decode provisioning profile"
+          exit 1
+        fi
+
+        # 使用 security 命令提取 UUID（更可靠）
+        PP_UUID=$(security cms -D -i "$PROVISION_PATH" 2>/dev/null | plutil -extract UUID xml1 -o - - | sed -n 's/.*<string>\(.*\)<\/string>.*/\1/p')
+
+        # 如果 security 命令失败，尝试使用 grep
+        if [ -z "$PP_UUID" ]; then
+          echo "⚠️  Trying alternative UUID extraction method..."
+          PP_UUID=$(grep -aA1 '<key>UUID</key>' "$PROVISION_PATH" | grep '<string>' | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+        fi
+
+        if [ -z "$PP_UUID" ]; then
+          echo "❌ Error: Failed to extract UUID from provisioning profile"
+          exit 1
+        fi
 
         # 复制到正确位置
-        cp $PROVISION_PATH "$PP_PATH/$PP_UUID.mobileprovision"
+        cp "$PROVISION_PATH" "$PP_PATH/$PP_UUID.mobileprovision"
 
         echo "✅ Provisioning profile installed: $PP_UUID"
 
