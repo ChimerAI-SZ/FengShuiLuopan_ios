@@ -20,7 +20,7 @@ def main():
     # GitHub API 配置
     owner = "ChimerAI-SZ"
     repo = "FengShuiLuopan_ios"
-    run_id = "22540689027"  # 最新失败的运行
+    run_id = "22546862098"  # 最新失败的运行
 
     print(f"=== 获取 GitHub Actions 日志 (Run #{run_id}) ===\n")
 

@@ -563,12 +563,25 @@ jobs:
       continue-on-error: true
 
     - name: Export IPA
+      id: export_ipa
       run: |
+        echo "开始导出 IPA..."
+
         xcodebuild -exportArchive \
           -archivePath $RUNNER_TEMP/FengShuiLuopan.xcarchive \
           -exportOptionsPlist ExportOptions.plist \
           -exportPath $RUNNER_TEMP/export
-      continue-on-error: true
+
+        # 检查 IPA 是否生成
+        if [ -f "$RUNNER_TEMP/export/FengShuiLuopan.ipa" ]; then
+          echo "✅ IPA 导出成功"
+          echo "ipa_path=$RUNNER_TEMP/export/FengShuiLuopan.ipa" >> $GITHUB_OUTPUT
+          ls -lh "$RUNNER_TEMP/export/"
+        else
+          echo "❌ IPA 文件未找到"
+          ls -lh "$RUNNER_TEMP/export/" || echo "export 目录不存在"
+          exit 1
+        fi
 
     # ========================================
     # 上传产物
@@ -576,7 +589,7 @@ jobs:
 
     - name: Upload IPA
       uses: actions/upload-artifact@v4
-      if: success()
+      if: steps.export_ipa.outcome == 'success'
       with:
         name: FengShuiLuopan-IPA
         path: ${{ runner.temp }}/export/*.ipa
@@ -584,10 +597,10 @@ jobs:
 
     - name: Upload dSYM
       uses: actions/upload-artifact@v4
-      if: success()
+      if: steps.export_ipa.outcome == 'success'
       with:
         name: FengShuiLuopan-dSYM
-        path: ${{ runner.temp }}/export/*.dSYM.zip
+        path: ${{ runner.temp }}/export/*.dSYM
         retention-days: 30
 
     # ========================================
