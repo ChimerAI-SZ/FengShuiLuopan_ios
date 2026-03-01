@@ -40,3 +40,11 @@ POC_Algorithm/
 *.swp
 *.swo
 *~
+
+# iOS签名相关（敏感信息，不要提交）
+*.p12
+*.mobileprovision
+*_base64.txt
+certificate_base64.txt
+provision_base64.txt
+
