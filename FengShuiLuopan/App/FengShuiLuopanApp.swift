@@ -1,6 +1,6 @@
 // FengShuiLuopanApp.swift
 // 应用入口
-// 见 ARCHITECTURE.md 5节
+// 见 ARCHITECTURE.md 5节, PHASE_V2_SPEC.md
 
 import SwiftUI
 
@@ -8,7 +8,7 @@ import SwiftUI
 struct FengShuiLuopanApp: App {
     var body: some Scene {
         WindowGroup {
-            MapView()
+            MainContentView()
         }
     }
 }
