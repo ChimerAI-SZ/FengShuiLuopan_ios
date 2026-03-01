@@ -11,10 +11,9 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     IPHONEOS_DEPLOYMENT_TARGET: "16.0"
-    GENERATE_INFOPLIST_FILE: NO
+    GENERATE_INFOPLIST_FILE: YES
     SWIFT_EMIT_LOC_STRINGS: YES
     ENABLE_PREVIEWS: YES
-    INFOPLIST_FILE: Info.plist
 
 targets:
   FengShuiLuopan:
@@ -31,12 +30,13 @@ targets:
         PRODUCT_NAME: FengShuiLuopan
         MARKETING_VERSION: "0.2.0"
         CURRENT_PROJECT_VERSION: "1"
-        INFOPLIST_FILE: Info.plist
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "需要获取您的位置信息以提供风水罗盘功能"
+        GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "5.9"
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         # 签名配置 - 在 CI 中会被覆盖
@@ -44,46 +44,7 @@ targets:
         CODE_SIGN_IDENTITY: "Apple Development"
         DEVELOPMENT_TEAM: "66JTX3GW7T"
         PROVISIONING_PROFILE_SPECIFIER: "FengShuiLuopan Dev"
-    dependencies:
-      - sdk: CoreLocation.framework
-      - sdk: MapKit.framework
-      - sdk: UIKit.framework
-      - sdk: SwiftUI.framework
-      - sdk: Foundation.framework
-      - sdk: libsqlite3.tbd
-      # CocoaPods dependencies
-      - framework: Pods_FengShuiLuopan.framework
-        embed: false
-        implicit: true
-    preBuildScripts:
-      - script: |
-          if [ "${PODS_ROOT}" != "" ]; then
-            "${PODS_ROOT}/Target Support Files/Pods-FengShuiLuopan/Pods-FengShuiLuopan-frameworks.sh"
-          fi
-        name: "[CP] Embed Pods Frameworks"
-        inputFiles:
-          - "${PODS_ROOT}/Target Support Files/Pods-FengShuiLuopan/Pods-FengShuiLuopan-frameworks.sh"
-        outputFiles:
-          - "${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/AMapFoundation.framework"
-          - "${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MAMapKit.framework"
-        basedOnDependencyAnalysis: false
-      - script: |
-          if [ "${PODS_ROOT}" != "" ]; then
-            "${PODS_ROOT}/Target Support Files/Pods-FengShuiLuopan/Pods-FengShuiLuopan-resources.sh"
-          fi
-        name: "[CP] Copy Pods Resources"
-        inputFiles:
-          - "${PODS_ROOT}/Target Support Files/Pods-FengShuiLuopan/Pods-FengShuiLuopan-resources.sh"
-        basedOnDependencyAnalysis: false
-    postBuildScripts:
-      - script: |
-          if which swiftlint >/dev/null; then
-            swiftlint
-          else
-            echo "warning: SwiftLint not installed, skipping..."
-          fi
-        name: SwiftLint
-        basedOnDependencyAnalysis: false
+    dependencies: []
 
 schemes:
   FengShuiLuopan:
