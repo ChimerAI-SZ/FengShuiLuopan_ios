@@ -144,8 +144,17 @@ jobs:
           CODE_SIGN_STYLE=Manual \
           CODE_SIGN_IDENTITY="Apple Development" \
           DEVELOPMENT_TEAM="66JTX3GW7T" \
-          PROVISIONING_PROFILE_SPECIFIER="FengShuiLuopan Dev" \
-          | xcpretty || true
+          PROVISIONING_PROFILE_SPECIFIER="FengShuiLuopan Dev"
+
+        # 验证 archive 是否创建成功
+        if [ -d "$RUNNER_TEMP/FengShuiLuopan.xcarchive" ]; then
+          echo "✅ Archive 创建成功"
+          ls -la "$RUNNER_TEMP/FengShuiLuopan.xcarchive"
+        else
+          echo "❌ Archive 创建失败"
+          ls -la "$RUNNER_TEMP/" || true
+          exit 1
+        fi
 
         echo "✅ 构建完成"
 
