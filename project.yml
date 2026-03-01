@@ -25,29 +25,6 @@ targets:
       - path: FengShuiLuopan
         excludes:
           - "**/.DS_Store"
-    info:
-      path: Info.plist
-      properties:
-        CFBundleDisplayName: 风水罗盘
-        CFBundleShortVersionString: "0.2.0"
-        CFBundleVersion: "1"
-        UIApplicationSceneManifest:
-          UIApplicationSupportsMultipleScenes: false
-          UISceneConfigurations:
-            UIWindowSceneSessionRoleApplication:
-              - UISceneConfigurationName: Default Configuration
-                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
-        UILaunchScreen: {}
-        UISupportedInterfaceOrientations:
-          - UIInterfaceOrientationPortrait
-        UISupportedInterfaceOrientations~ipad:
-          - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationPortraitUpsideDown
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
-        NSLocationWhenInUseUsageDescription: 需要获取您的位置信息以提供风水罗盘功能
-        NSLocationAlwaysAndWhenInUseUsageDescription: 需要获取您的位置信息以提供风水罗盘功能
-        AMapApiKey: "16d5c89d0a14758cae55c218e2bd3322"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.fengshuizohar.ios.dev
