@@ -72,6 +72,7 @@ jobs:
 
         # 使用真机架构构建（不需要模拟器）
         # 这样可以验证代码编译，但不需要实际运行
+        set +e  # 不立即退出，捕获错误
         xcodebuild clean build \
           -workspace FengShuiLuopan.xcworkspace \
           -scheme FengShuiLuopan \
@@ -81,7 +82,20 @@ jobs:
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
           CODE_SIGNING_ALLOWED=NO \
-          ONLY_ACTIVE_ARCH=NO
+          ONLY_ACTIVE_ARCH=NO 2>&1 | tee build.log
+
+        BUILD_EXIT_CODE=${PIPESTATUS[0]}
+
+        if [ $BUILD_EXIT_CODE -ne 0 ]; then
+          echo ""
+          echo "❌ 构建失败 (exit code: $BUILD_EXIT_CODE)"
+          echo ""
+          echo "=== 错误摘要 (最后 100 行) ==="
+          tail -100 build.log | grep -E "error:|warning:|fatal|undefined" || tail -100 build.log
+          echo ""
+          echo "=== 完整日志已保存到 build.log ==="
+          exit $BUILD_EXIT_CODE
+        fi
 
         echo "✅ 构建成功 - 代码可以编译通过"
 
