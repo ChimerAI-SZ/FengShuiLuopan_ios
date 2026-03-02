@@ -3,7 +3,11 @@
 // 见 ARCHITECTURE.md 第6节, PHASE_V2_SPEC.md
 
 import Foundation
+#if canImport(SQLite)
 import SQLite
+#elseif canImport(SQLite3)
+import SQLite3
+#endif
 
 /// 数据库架构管理
 class DatabaseSchema {
@@ -66,15 +70,15 @@ class DatabaseSchema {
     /// 创建索引
     private static func createIndexes(in db: Connection) throws {
         // 案例名称索引（用于搜索）
-        try db.run(casesTable.createIndex(caseName, ifNotExists: true))
+        _ = try casesTable.createIndex(caseName, ifNotExists: true)
 
         // 点位案例ID索引（用于查询案例的所有点位）
-        try db.run(pointsTable.createIndex(pointCaseId, ifNotExists: true))
+        _ = try pointsTable.createIndex(pointCaseId, ifNotExists: true)
 
         // 点位类型索引（用于过滤原点/终点）
-        try db.run(pointsTable.createIndex(pointType, ifNotExists: true))
+        _ = try pointsTable.createIndex(pointType, ifNotExists: true)
 
         // GPS原点索引（用于快速查找GPS原点）
-        try db.run(pointsTable.createIndex(pointIsGPSOrigin, ifNotExists: true))
+        _ = try pointsTable.createIndex(pointIsGPSOrigin, ifNotExists: true)
     }
 }
