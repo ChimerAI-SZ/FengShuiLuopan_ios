@@ -70,16 +70,18 @@ jobs:
       run: |
         echo "🔨 测试构建（不签名）..."
 
-        # 只构建，不 archive，不签名
+        # 使用真机架构构建（不需要模拟器）
+        # 这样可以验证代码编译，但不需要实际运行
         xcodebuild clean build \
           -workspace FengShuiLuopan.xcworkspace \
           -scheme FengShuiLuopan \
           -configuration Debug \
-          -sdk iphonesimulator \
-          -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+          -sdk iphoneos \
+          -destination 'generic/platform=iOS' \
           CODE_SIGN_IDENTITY="" \
           CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_ALLOWED=NO \
+          ONLY_ACTIVE_ARCH=NO
 
         echo "✅ 构建成功 - 代码可以编译通过"
 
