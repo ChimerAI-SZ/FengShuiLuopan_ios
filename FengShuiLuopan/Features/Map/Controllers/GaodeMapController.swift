@@ -14,7 +14,6 @@ class GaodeMapController: NSObject, MapControllerProtocol {
     // MARK: - Properties
 
     private let mapView: MAMapView
-    private let converter: CoordinateConverter
 
     /// 标记点缓存 (id -> MAPointAnnotation)
     private var markers: [String: MAPointAnnotation] = [:]
@@ -54,7 +53,7 @@ class GaodeMapController: NSObject, MapControllerProtocol {
 
     func moveCamera(to coordinate: WGS84Coordinate, zoom: Float, animated: Bool) {
         // WGS-84 → GCJ-02
-        let gcj = converter.wgs84ToGcj02(coordinate)
+        let gcj = CoordinateConverter.wgs84ToGcj02(coordinate)
         let center = CLLocationCoordinate2D(latitude: gcj.latitude, longitude: gcj.longitude)
 
         mapView.setCenter(center, animated: animated)
@@ -65,7 +64,7 @@ class GaodeMapController: NSObject, MapControllerProtocol {
         // GCJ-02 → WGS-84
         let center = mapView.centerCoordinate
         let gcj = WGS84Coordinate(latitude: center.latitude, longitude: center.longitude)
-        return converter.gcj02ToWgs84(gcj)
+        return CoordinateConverter.gcj02ToWgs84(gcj)
     }
 
     func getCurrentZoom() -> Float {
@@ -81,7 +80,7 @@ class GaodeMapController: NSObject, MapControllerProtocol {
         }
 
         // WGS-84 → GCJ-02
-        let gcj = converter.wgs84ToGcj02(coordinate)
+        let gcj = CoordinateConverter.wgs84ToGcj02(coordinate)
         let annotation = MAPointAnnotation()
         annotation.coordinate = CLLocationCoordinate2D(latitude: gcj.latitude, longitude: gcj.longitude)
         annotation.title = id
@@ -108,11 +107,11 @@ class GaodeMapController: NSObject, MapControllerProtocol {
     func addGroundOverlay(id: String, center: WGS84Coordinate, image: UIImage, radiusMeters: Double) {
         // 移除旧覆盖层
         if let oldOverlay = overlays[id] {
-            mapView.removeOverlay(oldOverlay)
+            mapView.remove(oldOverlay)
         }
 
         // WGS-84 → GCJ-02
-        let gcj = converter.wgs84ToGcj02(center)
+        let gcj = CoordinateConverter.wgs84ToGcj02(center)
         let centerCoord = CLLocationCoordinate2D(latitude: gcj.latitude, longitude: gcj.longitude)
 
         // 计算边界（正方形）
@@ -140,11 +139,11 @@ class GaodeMapController: NSObject, MapControllerProtocol {
                           endAngle: Double, style: OverlayStyle) {
         // 移除旧覆盖层
         if let oldOverlay = overlays[id] {
-            mapView.removeOverlay(oldOverlay)
+            mapView.remove(oldOverlay)
         }
 
         // WGS-84 → GCJ-02
-        let gcj = converter.wgs84ToGcj02(center)
+        let gcj = CoordinateConverter.wgs84ToGcj02(center)
         let centerCoord = CLLocationCoordinate2D(latitude: gcj.latitude, longitude: gcj.longitude)
 
         // 创建扇形多边形（36段）
@@ -170,12 +169,12 @@ class GaodeMapController: NSObject, MapControllerProtocol {
     func addPolyline(id: String, points: [WGS84Coordinate], style: PolylineStyle) -> String {
         // 移除旧连线
         if let oldPolyline = polylines[id] {
-            mapView.removeOverlay(oldPolyline)
+            mapView.remove(oldPolyline)
         }
 
         // WGS-84 → GCJ-02
         var coordinates = points.map { wgs in
-            let gcj = converter.wgs84ToGcj02(wgs)
+            let gcj = CoordinateConverter.wgs84ToGcj02(wgs)
             return CLLocationCoordinate2D(latitude: gcj.latitude, longitude: gcj.longitude)
         }
 
@@ -188,11 +187,11 @@ class GaodeMapController: NSObject, MapControllerProtocol {
 
     func removeOverlay(id: String) {
         if let overlay = overlays[id] {
-            mapView.removeOverlay(overlay)
+            mapView.remove(overlay)
             overlays.removeValue(forKey: id)
         }
         if let polyline = polylines[id] {
-            mapView.removeOverlay(polyline)
+            mapView.remove(polyline)
             polylines.removeValue(forKey: id)
         }
     }
@@ -236,11 +235,11 @@ class GaodeMapController: NSObject, MapControllerProtocol {
     func screenToCoordinate(_ point: CGPoint) -> WGS84Coordinate? {
         let coord = mapView.convert(point, toCoordinateFrom: mapView)
         let gcj = WGS84Coordinate(latitude: coord.latitude, longitude: coord.longitude)
-        return converter.gcj02ToWgs84(gcj)
+        return CoordinateConverter.gcj02ToWgs84(gcj)
     }
 
     func coordinateToScreen(_ coordinate: WGS84Coordinate) -> CGPoint? {
-        let gcj = converter.wgs84ToGcj02(coordinate)
+        let gcj = CoordinateConverter.wgs84ToGcj02(coordinate)
         let coord = CLLocationCoordinate2D(latitude: gcj.latitude, longitude: gcj.longitude)
         return mapView.convert(coord, toPointTo: mapView)
     }
@@ -254,7 +253,7 @@ extension GaodeMapController: MAMapViewDelegate {
     func mapView(_ mapView: MAMapView!, didSingleTappedAt coordinate: CLLocationCoordinate2D) {
         // GCJ-02 → WGS-84
         let gcj = WGS84Coordinate(latitude: coordinate.latitude, longitude: coordinate.longitude)
-        let wgs = converter.gcj02ToWgs84(gcj)
+        let wgs = CoordinateConverter.gcj02ToWgs84(gcj)
         onMapTap?(wgs)
     }
 
