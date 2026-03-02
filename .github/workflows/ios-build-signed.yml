@@ -67,11 +67,11 @@ jobs:
 
     - name: Install Provisioning Profile
       env:
-        PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
       run: |
         # 验证 Secret 是否存在
         if [ -z "$PROVISIONING_PROFILE_BASE64" ]; then
-          echo "❌ Error: IOS_PROVISIONING_PROFILE_BASE64 secret is empty or not set"
+          echo "❌ Error: IOS_PROVISION_PROFILE_BASE64 secret is empty or not set"
           echo "Please check GitHub repository secrets"
           exit 1
         fi
