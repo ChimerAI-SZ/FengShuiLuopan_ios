@@ -14,7 +14,7 @@ class DatabaseManager {
 
     // MARK: - Properties
 
-    private var db: Connection?
+    private var db: SQLite.Connection?
 
     // MARK: - Initialization
 
@@ -34,7 +34,7 @@ class DatabaseManager {
         let path = try getDatabasePath()
 
         // 创建连接
-        db = try Connection(path)
+        db = try SQLite.Connection(path)
 
         // 启用外键约束
         try db?.execute("PRAGMA foreign_keys = ON")
@@ -68,7 +68,7 @@ class DatabaseManager {
     // MARK: - Public Methods
 
     /// 获取数据库连接
-    func getConnection() throws -> Connection {
+    func getConnection() throws -> SQLite.Connection {
         guard let db = db else {
             throw DatabaseError.connectionFailed
         }

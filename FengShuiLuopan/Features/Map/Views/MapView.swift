@@ -400,13 +400,13 @@ struct ConnectionInfoPanel: View {
             InfoRow(label: "距离", value: connection.formattedDistance)
 
             // 24山
-            InfoRow(label: "24山", value: connection.mountain.chineseName)
+            InfoRow(label: "24山", value: connection.mountain.name)
 
             // 八卦
-            InfoRow(label: "八卦", value: connection.trigram.chineseName)
+            InfoRow(label: "八卦", value: connection.trigram.name)
 
             // 五行
-            InfoRow(label: "五行", value: connection.wuxing.chineseName)
+            InfoRow(label: "五行", value: connection.wuxing.name)
         }
         .padding()
         .background(Color.white)

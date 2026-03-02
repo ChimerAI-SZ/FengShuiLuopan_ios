@@ -10,7 +10,7 @@ class PointRepository {
 
     // MARK: - Properties
 
-    private let db: Connection
+    private let db: SQLite.Connection
 
     // MARK: - Initialization
 
