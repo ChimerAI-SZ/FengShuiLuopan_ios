@@ -38,7 +38,6 @@ class GaodeMapController: NSObject, MapControllerProtocol {
 
     init(mapView: MAMapView) {
         self.mapView = mapView
-        self.converter = CoordinateConverter()
         super.init()
 
         // 配置地图
@@ -127,11 +126,11 @@ class GaodeMapController: NSObject, MapControllerProtocol {
             longitude: gcj.longitude + lonDelta
         )
 
-        let bounds = MACoordinateBounds(southWest: southWest, northEast: northEast)
+        let bounds = MACoordinateBounds(northEast: northEast, southWest: southWest)
         let groundOverlay = MAGroundOverlay(bounds: bounds, icon: image)
 
         overlays[id] = groundOverlay
-        mapView.addOverlay(groundOverlay)
+        mapView.add(groundOverlay)
     }
 
     func addSectorOverlay(id: String, center: WGS84Coordinate,
@@ -163,7 +162,7 @@ class GaodeMapController: NSObject, MapControllerProtocol {
 
         let polygon = MAPolygon(coordinates: &coordinates, count: UInt(coordinates.count))
         overlays[id] = polygon
-        mapView.addOverlay(polygon)
+        mapView.add(polygon)
     }
 
     func addPolyline(id: String, points: [WGS84Coordinate], style: PolylineStyle) -> String {
@@ -180,7 +179,7 @@ class GaodeMapController: NSObject, MapControllerProtocol {
 
         let polyline = MAPolyline(coordinates: &coordinates, count: UInt(coordinates.count))
         polylines[id] = polyline
-        mapView.addOverlay(polyline)
+        mapView.add(polyline)
 
         return id
     }

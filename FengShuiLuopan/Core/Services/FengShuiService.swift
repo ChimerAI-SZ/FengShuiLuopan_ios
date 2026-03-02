@@ -138,11 +138,11 @@ class FengShuiService {
 
     /// 计算连线信息
     func calculateConnection(from origin: GeoPoint, to destination: GeoPoint) -> Connection {
-        let distance = FengShuiEngine.calculateDistance(from: origin.coordinate, to: destination.coordinate)
+        let distance = FengShuiEngine.calculateVincentyDistance(from: origin.coordinate, to: destination.coordinate)
         let bearing = FengShuiEngine.calculateRhumbBearing(from: origin.coordinate, to: destination.coordinate)
-        let mountain = FengShuiEngine.getMountain(bearing: bearing)
-        let trigram = FengShuiEngine.getTrigram(mountain: mountain)
-        let wuxing = FengShuiEngine.getWuXing(mountain: mountain)
+        let mountain = FengShuiEngine.bearingToMountain(bearing)
+        let trigram = FengShuiEngine.bearingToTrigram(bearing)
+        let wuxing = FengShuiEngine.bearingToWuXing(bearing)
 
         return Connection(
             origin: origin,
@@ -160,7 +160,7 @@ class FengShuiService {
     /// 检测重复终点（见ARCHITECTURE.md 4.7节）
     private func isDuplicateDestination(_ coordinate: WGS84Coordinate, in points: [GeoPoint]) -> Bool {
         for point in points where point.pointType == .destination {
-            let distance = FengShuiEngine.calculateDistance(from: coordinate, to: point.coordinate)
+            let distance = FengShuiEngine.calculateVincentyDistance(from: coordinate, to: point.coordinate)
             if distance <= CaseConstants.DUPLICATE_POINT_THRESHOLD {
                 return true
             }
