@@ -1,0 +1,94 @@
+name: iOS Build Test (No Signing)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    name: Test Build Without Signing
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+
+    - name: Show Xcode version
+      run: xcodebuild -version
+
+    # ========================================
+    # 安装 XcodeGen
+    # ========================================
+
+    - name: Install XcodeGen
+      run: |
+        echo "📦 安装 XcodeGen..."
+        brew install xcodegen
+        xcodegen --version
+
+    # ========================================
+    # 生成 Xcode 项目
+    # ========================================
+
+    - name: Generate Xcode Project with XcodeGen
+      run: |
+        echo "🔧 使用 XcodeGen 生成 Xcode 项目..."
+        xcodegen generate
+
+        echo "✅ 项目生成成功"
+        ls -la *.xcodeproj
+
+    # ========================================
+    # 安装 CocoaPods
+    # ========================================
+
+    - name: Install CocoaPods
+      run: |
+        echo "📦 安装 CocoaPods..."
+        sudo gem install cocoapods
+        pod --version
+
+    - name: Install CocoaPods dependencies
+      run: |
+        echo "📦 安装 CocoaPods 依赖..."
+        pod install --repo-update
+
+        echo "✅ 依赖安装完成"
+        ls -la *.xcworkspace
+
+    # ========================================
+    # 测试构建（不签名）
+    # ========================================
+
+    - name: Build Without Signing
+      run: |
+        echo "🔨 测试构建（不签名）..."
+
+        # 只构建，不 archive，不签名
+        xcodebuild clean build \
+          -workspace FengShuiLuopan.xcworkspace \
+          -scheme FengShuiLuopan \
+          -configuration Debug \
+          -sdk iphonesimulator \
+          -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO
+
+        echo "✅ 构建成功 - 代码可以编译通过"
+
+    - name: Build Summary
+      if: always()
+      run: |
+        echo "========================================="
+        echo "构建测试完成"
+        echo "========================================="
+        echo "目的: 验证代码能否编译通过（不涉及签名）"
+        echo "结果: 查看上方 Build Without Signing 步骤"
+        echo "========================================="

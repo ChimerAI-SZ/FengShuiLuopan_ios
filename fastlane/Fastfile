@@ -1,0 +1,55 @@
+# Fastfile for FengShuiLuopan iOS
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Build and sign iOS app"
+  lane :build do
+    # 设置项目路径
+    workspace = "FengShuiLuopan.xcworkspace"
+    scheme = "FengShuiLuopan"
+
+    # 清理构建目录
+    clean_build_artifacts
+
+    # 构建和签名
+    build_app(
+      workspace: workspace,
+      scheme: scheme,
+      configuration: "Release",
+      export_method: "development",
+      output_directory: "./build",
+      output_name: "FengShuiLuopan.ipa",
+
+      # 签名配置
+      codesigning_identity: "Apple Development",
+      export_options: {
+        method: "development",
+        teamID: "66JTX3GW7T",
+        signingStyle: "manual",
+        provisioningProfiles: {
+          "com.fengshuizohar.ios.dev" => "FengShuiLuopan Dev"
+        }
+      },
+
+      # 构建设置
+      xcargs: "CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=66JTX3GW7T",
+
+      # 跳过 profile 检测（因为我们手动管理）
+      skip_profile_detection: true,
+
+      # 输出详细日志
+      verbose: true
+    )
+
+    UI.success("✅ IPA 构建成功!")
+    UI.message("📦 IPA 位置: ./build/FengShuiLuopan.ipa")
+  end
+
+  desc "Setup certificates and provisioning profiles"
+  lane :setup_signing do
+    # 这个 lane 用于在 CI 环境中设置签名
+    # 实际的证书和 profile 安装由 GitHub Actions 完成
+    UI.message("📝 签名配置由 GitHub Actions 管理")
+  end
+end

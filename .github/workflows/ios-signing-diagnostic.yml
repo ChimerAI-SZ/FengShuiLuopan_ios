@@ -1,0 +1,196 @@
+name: iOS Signing Diagnostic
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    name: Diagnose Signing Configuration
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: latest-stable
+
+    - name: Show Xcode version
+      run: xcodebuild -version
+
+    # ========================================
+    # 安装工具
+    # ========================================
+
+    - name: Install Tools
+      run: |
+        echo "📦 安装工具..."
+        brew install xcodegen
+        sudo gem install cocoapods
+
+    # ========================================
+    # 安装证书和配置文件
+    # ========================================
+
+    - name: Install Apple Certificate
+      env:
+        CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+        CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+        KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      run: |
+        CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+        echo -n "$CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security import $CERTIFICATE_PATH -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+        echo "✅ 证书导入完成"
+
+    - name: Install Provisioning Profile
+      env:
+        PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+      run: |
+        PP_PATH=$RUNNER_TEMP/profile.mobileprovision
+        echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
+
+        echo "✅ Provisioning Profile 安装完成"
+
+    # ========================================
+    # 诊断步骤
+    # ========================================
+
+    - name: "诊断 1: 列出所有证书"
+      run: |
+        echo "========================================="
+        echo "📋 Keychain 中的所有证书"
+        echo "========================================="
+        security find-identity -v -p codesigning
+        echo ""
+
+    - name: "诊断 2: 列出所有 Provisioning Profiles"
+      run: |
+        echo "========================================="
+        echo "📋 已安装的 Provisioning Profiles"
+        echo "========================================="
+        ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+        echo ""
+
+    - name: "诊断 3: 解析 Provisioning Profile 内容"
+      run: |
+        echo "========================================="
+        echo "📋 Provisioning Profile 详细信息"
+        echo "========================================="
+
+        PP_FILE=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | head -1)
+
+        echo "文件: $PP_FILE"
+        echo ""
+
+        echo "--- Profile 名称 ---"
+        security cms -D -i "$PP_FILE" | grep -A 1 "Name" | tail -1
+        echo ""
+
+        echo "--- Team ID ---"
+        security cms -D -i "$PP_FILE" | grep -A 1 "TeamIdentifier" -A 2 | grep string | sed 's/<[^>]*>//g' | xargs
+        echo ""
+
+        echo "--- Bundle ID ---"
+        security cms -D -i "$PP_FILE" | grep -A 1 "application-identifier" | tail -1 | sed 's/<[^>]*>//g' | xargs
+        echo ""
+
+        echo "--- UUID ---"
+        security cms -D -i "$PP_FILE" | grep -A 1 "UUID" | tail -1 | sed 's/<[^>]*>//g' | xargs
+        echo ""
+
+        echo "--- 完整内容 (前100行) ---"
+        security cms -D -i "$PP_FILE" | head -100
+        echo ""
+
+    - name: "诊断 4: 生成项目并检查配置"
+      run: |
+        echo "========================================="
+        echo "📋 生成项目并检查配置"
+        echo "========================================="
+
+        xcodegen generate
+        pod install --repo-update
+
+        echo ""
+        echo "--- project.pbxproj 中的签名配置 ---"
+        grep -A 5 "CODE_SIGN" FengShuiLuopan.xcodeproj/project.pbxproj | head -20
+        echo ""
+
+    - name: "诊断 5: 尝试列出可用的 Provisioning Profiles"
+      run: |
+        echo "========================================="
+        echo "📋 Xcode 可以看到的 Provisioning Profiles"
+        echo "========================================="
+
+        # 尝试使用 xcodebuild 列出可用的配置
+        xcodebuild -showBuildSettings \
+          -workspace FengShuiLuopan.xcworkspace \
+          -scheme FengShuiLuopan \
+          -configuration Release | grep -i "provisioning\|team\|sign" || true
+
+        echo ""
+
+    - name: "诊断 6: 检查 Bundle ID 匹配"
+      run: |
+        echo "========================================="
+        echo "📋 Bundle ID 匹配检查"
+        echo "========================================="
+
+        echo "project.yml 中的 Bundle ID:"
+        grep "PRODUCT_BUNDLE_IDENTIFIER" project.yml
+        echo ""
+
+        echo "Provisioning Profile 中的 Bundle ID:"
+        PP_FILE=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | head -1)
+        security cms -D -i "$PP_FILE" | grep -A 1 "application-identifier" | tail -1
+        echo ""
+
+    - name: "诊断 7: 尝试构建并捕获详细错误"
+      continue-on-error: true
+      run: |
+        echo "========================================="
+        echo "📋 尝试构建（预期失败，但会显示详细错误）"
+        echo "========================================="
+
+        xcodebuild clean archive \
+          -workspace FengShuiLuopan.xcworkspace \
+          -scheme FengShuiLuopan \
+          -configuration Release \
+          -archivePath $RUNNER_TEMP/FengShuiLuopan.xcarchive \
+          CODE_SIGN_STYLE=Manual \
+          CODE_SIGN_IDENTITY="Apple Development" \
+          DEVELOPMENT_TEAM="66JTX3GW7T" \
+          PROVISIONING_PROFILE_SPECIFIER="FengShuiLuopan Dev" \
+          -verbose 2>&1 | tee $RUNNER_TEMP/build.log
+
+        echo ""
+        echo "--- 构建日志中的签名相关错误 ---"
+        grep -i "provisioning\|signing\|certificate\|error" $RUNNER_TEMP/build.log | tail -50 || true
+
+    - name: Diagnostic Summary
+      if: always()
+      run: |
+        echo "========================================="
+        echo "诊断完成"
+        echo "========================================="
+        echo "请查看上方各个诊断步骤的输出"
+        echo "重点关注:"
+        echo "  1. 证书是否正确导入"
+        echo "  2. Provisioning Profile 的 Bundle ID 和 Team ID"
+        echo "  3. Bundle ID 是否完全匹配"
+        echo "  4. 构建错误的详细信息"
+        echo "========================================="
