@@ -164,7 +164,11 @@ struct MapView: View {
                         .background(Color.black.opacity(0.7))
                         .cornerRadius(8)
                         .padding(.top, 50)
-                    Spacer()\n                }\n            }\n\n            // 错误提示（Phase 2）
+                    Spacer()
+                }
+            }
+
+            // 错误提示（Phase 2）
             if let errorMessage = viewModel.errorMessage {
                 VStack {
                     Text(errorMessage)

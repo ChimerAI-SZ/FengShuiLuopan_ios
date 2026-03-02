@@ -79,9 +79,13 @@ jobs:
         # 解码 Provisioning Profile
         echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o $PP_PATH
 
-        # 安装到标准位置
+        # 提取 UUID
+        PP_UUID=$(security cms -D -i $PP_PATH | grep -A 1 "<key>UUID</key>" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+        echo "Provisioning Profile UUID: $PP_UUID"
+
+        # 安装到标准位置（使用 UUID 作为文件名）
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-        cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
+        cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/$PP_UUID.mobileprovision
 
         echo "✅ Provisioning Profile 安装完成"
 
