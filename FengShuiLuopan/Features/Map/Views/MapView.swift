@@ -319,7 +319,7 @@ struct DestinationOverlay: View {
             if let position = screenPosition {
                 VStack(alignment: .leading, spacing: 4) {
                     // 24山（最重要，最大字体）
-                    Text(connection.mountain.chineseName)
+                    Text(connection.mountain.name)
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(.white)
 
