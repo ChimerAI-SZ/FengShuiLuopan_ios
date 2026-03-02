@@ -74,13 +74,34 @@ jobs:
       env:
         PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
       run: |
+        # 验证 Secret 是否存在
+        if [ -z "$PROVISIONING_PROFILE_BASE64" ]; then
+          echo "❌ Error: IOS_PROVISIONING_PROFILE_BASE64 secret is empty or not set"
+          echo "Please check GitHub repository secrets"
+          exit 1
+        fi
+
+        echo "✅ Provisioning profile secret found (length: ${#PROVISIONING_PROFILE_BASE64})"
+
         PP_PATH=$RUNNER_TEMP/profile.mobileprovision
 
         # 解码 Provisioning Profile
         echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o $PP_PATH
 
+        # 验证解码后的文件
+        if [ ! -f "$PP_PATH" ] || [ ! -s "$PP_PATH" ]; then
+          echo "❌ Error: Failed to decode provisioning profile"
+          exit 1
+        fi
+
         # 提取 UUID
-        PP_UUID=$(security cms -D -i $PP_PATH | grep -A 1 "<key>UUID</key>" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+        PP_UUID=$(security cms -D -i $PP_PATH 2>/dev/null | grep -A 1 "<key>UUID</key>" | grep "<string>" | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+
+        if [ -z "$PP_UUID" ]; then
+          echo "❌ Error: Failed to extract UUID from provisioning profile"
+          exit 1
+        fi
+
         echo "Provisioning Profile UUID: $PP_UUID"
 
         # 安装到标准位置（使用 UUID 作为文件名）

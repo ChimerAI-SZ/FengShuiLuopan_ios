@@ -57,8 +57,23 @@ jobs:
       env:
         PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
       run: |
+        # 验证 Secret 是否存在
+        if [ -z "$PROVISIONING_PROFILE_BASE64" ]; then
+          echo "❌ Error: IOS_PROVISIONING_PROFILE_BASE64 secret is empty or not set"
+          echo "Please check GitHub repository secrets"
+          exit 1
+        fi
+
+        echo "✅ Provisioning profile secret found (length: ${#PROVISIONING_PROFILE_BASE64})"
+
         PP_PATH=$RUNNER_TEMP/profile.mobileprovision
         echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+
+        # 验证解码后的文件
+        if [ ! -f "$PP_PATH" ] || [ ! -s "$PP_PATH" ]; then
+          echo "❌ Error: Failed to decode provisioning profile"
+          exit 1
+        fi
 
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
@@ -174,7 +189,7 @@ jobs:
           CODE_SIGN_STYLE=Manual \
           CODE_SIGN_IDENTITY="Apple Development" \
           DEVELOPMENT_TEAM="66JTX3GW7T" \
-          PROVISIONING_PROFILE_SPECIFIER="FengShuiLuopan Dev" \
+          PROVISIONING_PROFILE_SPECIFIER="FengShuiLuopan_Dev" \
           -verbose 2>&1 | tee $RUNNER_TEMP/build.log
 
         echo ""
