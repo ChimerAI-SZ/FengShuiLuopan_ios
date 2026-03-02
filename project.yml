@@ -1,6 +1,6 @@
 name: FengShuiLuopan
 options:
-  bundleIdPrefix: com.fengshuizohar.ios
+  bundleIdPrefix: com.he
   deploymentTarget:
     iOS: "16.0"
   xcodeVersion: "15.0"
@@ -31,7 +31,7 @@ targets:
           - "**/.DS_Store"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.fengshuizohar.ios.dev
+        PRODUCT_BUNDLE_IDENTIFIER: com.he.FengShuiLuopan
         PRODUCT_NAME: FengShuiLuopan
         MARKETING_VERSION: "0.2.0"
         CURRENT_PROJECT_VERSION: "1"

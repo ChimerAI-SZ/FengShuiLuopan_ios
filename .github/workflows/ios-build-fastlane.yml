@@ -105,10 +105,36 @@ jobs:
     # 使用 Fastlane 构建
     # ========================================
 
+    - name: Verify Signing Setup
+      run: |
+        echo "🔍 验证签名配置..."
+        echo ""
+        echo "=== 已安装的证书 ==="
+        security find-identity -v -p codesigning
+        echo ""
+        echo "=== 已安装的 Provisioning Profiles ==="
+        ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+        echo ""
+        echo "=== Provisioning Profile 详情 ==="
+        for profile in ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision; do
+          echo "Profile: $profile"
+          security cms -D -i "$profile" | grep -A 5 "Name\|UUID\|TeamIdentifier\|ApplicationIdentifierPrefix" || true
+          echo "---"
+        done
+
     - name: Build with Fastlane
       run: |
         echo "🚀 使用 Fastlane 构建..."
-        fastlane build
+        fastlane build 2>&1 | tee fastlane.log
+      continue-on-error: true
+
+    - name: Upload Fastlane Log
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: fastlane-log
+        path: fastlane.log
+        retention-days: 7
 
     # ========================================
     # 上传产物

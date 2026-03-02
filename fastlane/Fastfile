@@ -28,7 +28,7 @@ platform :ios do
         teamID: "66JTX3GW7T",
         signingStyle: "manual",
         provisioningProfiles: {
-          "com.fengshuizohar.ios.dev" => "FengShuiLuopan Dev"
+          "com.he.FengShuiLuopan" => "FengShuiLuopan_Dev"
         }
       },
 
