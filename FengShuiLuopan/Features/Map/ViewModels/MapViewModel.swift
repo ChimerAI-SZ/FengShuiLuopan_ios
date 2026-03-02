@@ -4,6 +4,7 @@
 
 import Foundation
 import Combine
+import UIKit
 
 /// 地图视图模型
 /// Phase 2: 多原点多终点 + 案例管理 + GPS原点

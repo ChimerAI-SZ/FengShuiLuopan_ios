@@ -5,7 +5,7 @@
 import Foundation
 
 /// WGS-84坐标（世界大地测量系统1984）
-struct WGS84Coordinate: Equatable, CustomStringConvertible {
+struct WGS84Coordinate: Equatable, Codable, CustomStringConvertible {
     let latitude: Double   // 纬度 -90 ~ 90
     let longitude: Double  // 经度 -180 ~ 180
 
