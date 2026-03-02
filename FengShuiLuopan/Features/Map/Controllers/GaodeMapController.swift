@@ -161,7 +161,7 @@ class GaodeMapController: NSObject, MapControllerProtocol {
             coordinates.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
         }
 
-        let polygon = MAPolygon(coordinates: &coordinates, count: coordinates.count)
+        let polygon = MAPolygon(coordinates: &coordinates, count: UInt(coordinates.count))
         overlays[id] = polygon
         mapView.addOverlay(polygon)
     }
@@ -178,7 +178,7 @@ class GaodeMapController: NSObject, MapControllerProtocol {
             return CLLocationCoordinate2D(latitude: gcj.latitude, longitude: gcj.longitude)
         }
 
-        let polyline = MAPolyline(coordinates: &coordinates, count: coordinates.count)
+        let polyline = MAPolyline(coordinates: &coordinates, count: UInt(coordinates.count))
         polylines[id] = polyline
         mapView.addOverlay(polyline)
 
@@ -302,7 +302,9 @@ extension GaodeMapController: MAMapViewDelegate {
 
         // Polygon（扇形）
         if let polygon = overlay as? MAPolygon {
-            let renderer = MAPolygonRenderer(polygon: polygon)
+            guard let renderer = MAPolygonRenderer(polygon: polygon) else {
+                return nil
+            }
             renderer.fillColor = UIColor(red: 1.0, green: 0.0, blue: 0.0, alpha: 0.3)
             renderer.strokeColor = UIColor.red
             renderer.lineWidth = 2.0
@@ -310,7 +312,9 @@ extension GaodeMapController: MAMapViewDelegate {
         }
 
         if let polyline = overlay as? MAPolyline {
-            let renderer = MAPolylineRenderer(polyline: polyline)
+            guard let renderer = MAPolylineRenderer(polyline: polyline) else {
+                return nil
+            }
             renderer.strokeColor = UIColor.blue
             renderer.lineWidth = 3.0
             return renderer
