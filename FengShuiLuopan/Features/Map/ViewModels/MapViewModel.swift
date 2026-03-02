@@ -229,7 +229,7 @@ class MapViewModel: ObservableObject {
 
         // 清除旧连线
         connections.removeAll()
-        mapController?.removeAllOverlays()
+        mapController?.removeAllPolylines()
 
         // 计算每个终点的连线
         for (index, destination) in selectedDestinations.enumerated() {

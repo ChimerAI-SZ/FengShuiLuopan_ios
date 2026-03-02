@@ -88,13 +88,13 @@ struct MultiConnectionInfoPanel: View {
                 InfoRow(label: "距离", value: connection.formattedDistance)
 
                 // 24山
-                InfoRow(label: "24山", value: connection.mountain.name)
+                InfoRow(label: "24山", value: connection.mountain.chineseName)
 
                 // 八卦
-                InfoRow(label: "八卦", value: connection.trigram.name)
+                InfoRow(label: "八卦", value: connection.trigram.chineseName)
 
                 // 五行
-                InfoRow(label: "五行", value: connection.wuxing.rawValue)
+                InfoRow(label: "五行", value: connection.wuxing.chineseName)
             }
         }
         .padding()

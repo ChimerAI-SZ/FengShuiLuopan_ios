@@ -3,11 +3,7 @@
 // 见 ARCHITECTURE.md 第6节, PHASE_V2_SPEC.md
 
 import Foundation
-#if canImport(SQLite)
 import SQLite
-#elseif canImport(SQLite3)
-import SQLite3
-#endif
 
 /// 数据库管理器（单例）
 class DatabaseManager {

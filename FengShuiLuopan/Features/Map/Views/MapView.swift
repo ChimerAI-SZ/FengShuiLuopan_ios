@@ -319,7 +319,7 @@ struct DestinationOverlay: View {
             if let position = screenPosition {
                 VStack(alignment: .leading, spacing: 4) {
                     // 24山（最重要，最大字体）
-                    Text(connection.mountain.name)
+                    Text(connection.mountain.chineseName)
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(.white)
 
@@ -400,13 +400,13 @@ struct ConnectionInfoPanel: View {
             InfoRow(label: "距离", value: connection.formattedDistance)
 
             // 24山
-            InfoRow(label: "24山", value: connection.mountain.name)
+            InfoRow(label: "24山", value: connection.mountain.chineseName)
 
             // 八卦
-            InfoRow(label: "八卦", value: connection.trigram.name)
+            InfoRow(label: "八卦", value: connection.trigram.chineseName)
 
             // 五行
-            InfoRow(label: "五行", value: connection.wuxing.rawValue)
+            InfoRow(label: "五行", value: connection.wuxing.chineseName)
         }
         .padding()
         .background(Color.white)

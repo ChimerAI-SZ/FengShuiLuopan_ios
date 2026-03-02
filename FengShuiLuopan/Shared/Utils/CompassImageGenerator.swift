@@ -54,7 +54,7 @@ class CompassImageGenerator {
                     .foregroundColor: UIColor.black
                 ]
 
-                let text = mountain.name as NSString
+                let text = mountain.chineseName as NSString
                 let textSize = text.size(withAttributes: attributes)
                 let textRect = CGRect(
                     x: textX - textSize.width / 2,
