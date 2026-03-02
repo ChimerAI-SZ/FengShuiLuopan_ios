@@ -152,8 +152,7 @@ jobs:
           -archivePath $RUNNER_TEMP/FengShuiLuopan.xcarchive \
           CODE_SIGN_STYLE=Manual \
           CODE_SIGN_IDENTITY="Apple Development" \
-          DEVELOPMENT_TEAM="66JTX3GW7T" \
-          PROVISIONING_PROFILE_SPECIFIER="FengShuiLuopan Dev"
+          DEVELOPMENT_TEAM="66JTX3GW7T"
 
         # 验证 archive 是否创建成功
         if [ -d "$RUNNER_TEMP/FengShuiLuopan.xcarchive" ]; then
