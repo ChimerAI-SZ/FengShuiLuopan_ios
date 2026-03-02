@@ -145,6 +145,8 @@ jobs:
       run: |
         echo "🔨 开始构建 iOS 应用..."
 
+        # 不指定 PROVISIONING_PROFILE_SPECIFIER，避免影响 SPM 依赖
+        # 签名配置通过 ExportOptions.plist 指定
         xcodebuild clean archive \
           -workspace FengShuiLuopan.xcworkspace \
           -scheme FengShuiLuopan \
@@ -153,7 +155,8 @@ jobs:
           CODE_SIGN_STYLE=Manual \
           CODE_SIGN_IDENTITY="Apple Development" \
           DEVELOPMENT_TEAM="66JTX3GW7T" \
-          PROVISIONING_PROFILE_SPECIFIER="FengShuiLuopan_Dev"
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGNING_REQUIRED=NO
 
         # 验证 archive 是否创建成功
         if [ -d "$RUNNER_TEMP/FengShuiLuopan.xcarchive" ]; then

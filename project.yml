@@ -44,9 +44,11 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "5.9"
         ENABLE_USER_SCRIPT_SANDBOXING: NO
-        CODE_SIGN_STYLE: Manual
-        DEVELOPMENT_TEAM: 66JTX3GW7T
-        PROVISIONING_PROFILE_SPECIFIER: FengShuiLuopan_Dev
+        # 签名配置只在Release配置中设置，避免影响SPM依赖
+      configSettings:
+        Release:
+          CODE_SIGN_STYLE: Manual
+          DEVELOPMENT_TEAM: "66JTX3GW7T"
     dependencies:
       - package: SQLite
         product: SQLite
