@@ -406,7 +406,7 @@ struct ConnectionInfoPanel: View {
             InfoRow(label: "八卦", value: connection.trigram.name)
 
             // 五行
-            InfoRow(label: "五行", value: connection.wuxing.name)
+            InfoRow(label: "五行", value: connection.wuxing.rawValue)
         }
         .padding()
         .background(Color.white)

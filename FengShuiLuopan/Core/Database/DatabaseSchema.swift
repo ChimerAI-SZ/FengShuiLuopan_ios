@@ -33,7 +33,7 @@ class DatabaseSchema {
     // MARK: - Schema Creation
 
     /// 创建所有表
-    static func createTables(in db: Connection) throws {
+    static func createTables(in db: SQLite.Connection) throws {
         // 创建案例表
         try db.run(casesTable.create(ifNotExists: true) { t in
             t.column(caseId, primaryKey: .autoincrement)
@@ -64,7 +64,7 @@ class DatabaseSchema {
     }
 
     /// 创建索引
-    private static func createIndexes(in db: Connection) throws {
+    private static func createIndexes(in db: SQLite.Connection) throws {
         // 案例名称索引（用于搜索）
         try db.run(casesTable.createIndex(caseName, ifNotExists: true))
 
