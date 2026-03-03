@@ -30,7 +30,7 @@ class CaseManagementViewModel: ObservableObject {
 
     // MARK: - Private Properties
 
-    private let service: FengShuiService
+    private let service: FengShuiService?
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
@@ -41,8 +41,9 @@ class CaseManagementViewModel: ObservableObject {
             setupSearchObserver()
             loadCases()
         } catch {
-            self.service = try! FengShuiService()
-            self.errorMessage = "初始化失败: \(error.localizedDescription)"
+            self.service = nil
+            self.errorMessage = "数据库初始化失败: \(error.localizedDescription)"
+            print("❌ CaseManagementViewModel初始化失败: \(error)")
         }
     }
 
@@ -62,6 +63,10 @@ class CaseManagementViewModel: ObservableObject {
 
     /// 加载所有案例
     func loadCases() {
+        guard let service = service else {
+            errorMessage = "服务未初始化"
+            return
+        }
         do {
             cases = try service.getAllCases()
         } catch {
@@ -71,6 +76,7 @@ class CaseManagementViewModel: ObservableObject {
 
     /// 搜索案例
     private func performSearch(keyword: String) {
+        guard let service = service else { return }
         do {
             if keyword.isEmpty {
                 cases = try service.getAllCases()
@@ -84,6 +90,10 @@ class CaseManagementViewModel: ObservableObject {
 
     /// 创建案例
     func createCase(name: String, description: String?) {
+        guard let service = service else {
+            errorMessage = "服务未初始化"
+            return
+        }
         do {
             let newCase = try service.createCase(name: name, description: description)
             cases.insert(newCase, at: 0)
@@ -97,6 +107,7 @@ class CaseManagementViewModel: ObservableObject {
 
     /// 更新案例
     func updateCase(_ fengShuiCase: FengShuiCase) {
+        guard let service = service else { return }
         do {
             try service.updateCase(fengShuiCase)
             loadCases()
@@ -107,6 +118,7 @@ class CaseManagementViewModel: ObservableObject {
 
     /// 删除案例
     func deleteCase(_ id: Int) {
+        guard let service = service else { return }
         do {
             try service.deleteCase(id)
             cases.removeAll { $0.id == id }
@@ -121,6 +133,7 @@ class CaseManagementViewModel: ObservableObject {
 
     /// 加载案例的点位
     func loadPoints(for caseId: Int) {
+        guard let service = service else { return }
         do {
             let points = try service.getPointsByCase(caseId)
             casePoints[caseId] = points
@@ -131,6 +144,7 @@ class CaseManagementViewModel: ObservableObject {
 
     /// 删除点位
     func deletePoint(_ pointId: Int, from caseId: Int) {
+        guard let service = service else { return }
         do {
             try service.deletePoint(pointId)
             casePoints[caseId]?.removeAll { $0.id == pointId }
@@ -141,6 +155,7 @@ class CaseManagementViewModel: ObservableObject {
 
     /// 更新点位名称
     func updatePointName(_ point: GeoPoint, newName: String) {
+        guard let service = service else { return }
         var updatedPoint = point
         updatedPoint.name = newName
 
