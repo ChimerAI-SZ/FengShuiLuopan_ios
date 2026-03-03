@@ -66,15 +66,15 @@ class DatabaseSchema {
     /// 创建索引
     private static func createIndexes(in db: SQLite.Connection) throws {
         // 案例名称索引（用于搜索）
-        try db.run(casesTable.createIndex(caseName, ifNotExists: true))
+        try db.execute("CREATE INDEX IF NOT EXISTS idx_cases_name ON cases(name)")
 
         // 点位案例ID索引（用于查询案例的所有点位）
-        try db.run(pointsTable.createIndex(pointCaseId, ifNotExists: true))
+        try db.execute("CREATE INDEX IF NOT EXISTS idx_points_case_id ON points(case_id)")
 
         // 点位类型索引（用于过滤原点/终点）
-        try db.run(pointsTable.createIndex(pointType, ifNotExists: true))
+        try db.execute("CREATE INDEX IF NOT EXISTS idx_points_type ON points(point_type)")
 
         // GPS原点索引（用于快速查找GPS原点）
-        try db.run(pointsTable.createIndex(pointIsGPSOrigin, ifNotExists: true))
+        try db.execute("CREATE INDEX IF NOT EXISTS idx_points_gps_origin ON points(is_gps_origin)")
     }
 }
