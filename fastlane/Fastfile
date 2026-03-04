@@ -25,7 +25,7 @@ platform :ios do
       codesigning_identity: "Apple Development",
       export_options: {
         method: "development",
-        teamID: "ASGH9MXV9V",
+        teamID: "66JTX3GW7T",
         signingStyle: "manual",
         provisioningProfiles: {
           "com.he.FengShuiLuopan" => "FengShuiLuopan_Dev"
@@ -33,7 +33,7 @@ platform :ios do
       },
 
       # 构建设置
-      xcargs: "CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=ASGH9MXV9V",
+      xcargs: "CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=66JTX3GW7T",
 
       # 跳过 profile 检测（因为我们手动管理）
       skip_profile_detection: true,
