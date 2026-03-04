@@ -11,7 +11,7 @@
     <key>provisioningProfiles</key>
     <dict>
         <key>com.he.FengShuiLuopan</key>
-        <string>FengShuiLuopan_Dev</string>
+        <string>8c9e9908-f6ae-48a5-b224-5a771fb358e9</string>
     </dict>
     <key>compileBitcode</key>
     <false/>

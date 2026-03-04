@@ -28,7 +28,7 @@ platform :ios do
         teamID: "66JTX3GW7T",
         signingStyle: "manual",
         provisioningProfiles: {
-          "com.he.FengShuiLuopan" => "FengShuiLuopan_Dev"
+          "com.he.FengShuiLuopan" => "8c9e9908-f6ae-48a5-b224-5a771fb358e9"
         }
       },
 
