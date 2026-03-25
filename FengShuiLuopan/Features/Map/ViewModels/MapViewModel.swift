@@ -758,3 +758,4 @@ class MapViewModel: ObservableObject {
             style: entertainHomeStyle
         )
     }
+}
