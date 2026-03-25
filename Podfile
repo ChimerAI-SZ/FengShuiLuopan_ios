@@ -3,6 +3,7 @@ platform :ios, '16.0'
 target 'FengShuiLuopan' do
   use_frameworks!
   pod 'AMap3DMap', '~> 10.1'
+  pod 'AMapSearch', '~> 9.5'
 end
 
 post_install do |installer|

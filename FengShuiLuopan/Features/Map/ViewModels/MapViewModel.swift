@@ -1,6 +1,6 @@
 // MapViewModel.swift
-// 地图视图模型 - Phase 2版本
-// 见 PHASE_V0_SPEC.md, PHASE_V1_SPEC.md, PHASE_V2_SPEC.md
+// 地图视图模型 - Phase 4版本
+// 见 PHASE_V0_SPEC.md, PHASE_V1_SPEC.md, PHASE_V2_SPEC.md, PHASE_V4_SPEC.md
 
 import Foundation
 import Combine
@@ -54,12 +54,41 @@ class MapViewModel: ObservableObject {
     /// 错误消息
     @Published var errorMessage: String?
 
+    /// 扇形搜索相关状态（Phase 3）
+    @Published var showSectorSearch: Bool = false
+    @Published var isCrosshairMode: Bool = false
+    @Published var crosshairPOIName: String = ""
+    @Published var crosshairPOIAddress: String = ""
+    @Published var activePOIMarkers: [POIResult] = []
+    @Published var sectorSearchMessage: String?
+
     // MARK: - Private Properties
 
     private var mapController: MapControllerProtocol?
     private let service: FengShuiService
     private var cancellables = Set<AnyCancellable>()
     private var gpsOrigin: GPSOrigin?
+
+    /// 扇形搜索视图模型（Phase 3）
+    let sectorSearchViewModel = SectorSearchViewModel()
+
+    /// POI搜索服务（Phase 3）
+    let poiSearchService = POISearchService()
+
+    /// 生活圈视图模型（Phase 4）
+    let lifeCircleViewModel = LifeCircleViewModel()
+
+    /// 是否在生活圈模式
+    @Published var isInLifeCircleMode: Bool = false
+
+    /// 显示生活圈向导（多选原点）
+    @Published var showLifeCircleWizard: Bool = false
+
+    /// 生活圈激活前保存的普通模式状态（用于恢复）
+    private var savedNormalModeState: (origin: GeoPoint?, destinations: [GeoPoint], connections: [Connection])? = nil
+
+    /// 显示设置页面（Phase 5）
+    @Published var showSettings: Bool = false
 
     // MARK: - Initialization
 
@@ -70,6 +99,14 @@ class MapViewModel: ObservableObject {
             self.service = try! FengShuiService()
             self.errorMessage = "初始化失败: \(error.localizedDescription)"
         }
+
+        // 监听扇形搜索结果消息
+        sectorSearchViewModel.$searchResultMessage
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] message in
+                self?.sectorSearchMessage = message
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - GPS Origin Management
@@ -365,6 +402,11 @@ class MapViewModel: ObservableObject {
         return (try? service.getOriginsByCase(caseId)) ?? []
     }
 
+    /// 获取指定案例的原点列表（Phase 4生活圈用）
+    func getOriginsForCase(_ caseId: Int) -> [GeoPoint] {
+        return (try? service.getOriginsByCase(caseId)) ?? []
+    }
+
     /// 获取当前案例的终点列表
     func getDestinationsForCurrentCase() -> [GeoPoint] {
         guard let caseId = currentCaseId else { return [] }
@@ -426,4 +468,282 @@ class MapViewModel: ObservableObject {
     func clearError() {
         errorMessage = nil
     }
-}
+
+    // MARK: - Phase 3: 扇形搜索
+
+    /// 扇形起点（有原点用原点，否则用地图中心）
+    var sectorOrigin: WGS84Coordinate {
+        return selectedOrigin?.coordinate ?? mapCenterCoordinate ?? WGS84Coordinate(latitude: 39.9, longitude: 116.4)
+    }
+
+    /// 绘制扇形两翼虚线
+    /// - Parameter config: 扇形搜索配置
+    func drawSectorWings(config: SectorSearchConfig) {
+        let origin = sectorOrigin
+        let distance = config.distanceInMeters
+        let startAngle = config.startAngle
+        let endAngle = config.endAngle
+
+        // 先清除旧的扇形
+        mapController?.removeOverlay(id: "sector_left_wing")
+        mapController?.removeOverlay(id: "sector_right_wing")
+
+        // 计算左翼终点（startAngle方向）
+        let leftEnd = FengShuiEngine.calculateRhumbDestination(
+            from: origin,
+            bearing: startAngle,
+            distance: distance
+        )
+
+        // 计算右翼终点（endAngle方向）
+        let rightEnd = FengShuiEngine.calculateRhumbDestination(
+            from: origin,
+            bearing: endAngle,
+            distance: distance
+        )
+
+        // 虚线样式：紫色半透明
+        let wingStyle = PolylineStyle(
+            color: UInt32(0x997B1FA2),  // ARGB: 60%透明的紫色 #7B1FA2
+            width: 2.5,
+            isDashed: true
+        )
+
+        // 绘制左翼
+        mapController?.addPolyline(
+            id: "sector_left_wing",
+            points: [origin, leftEnd],
+            style: wingStyle
+        )
+
+        // 绘制右翼
+        mapController?.addPolyline(
+            id: "sector_right_wing",
+            points: [origin, rightEnd],
+            style: wingStyle
+        )
+    }
+
+    /// 在地图上显示POI标记（最多50个）
+    /// - Parameter pois: POI列表
+    func showPOIMarkers(_ pois: [POIResult]) {
+        // 清除旧的POI标记
+        (mapController as? GaodeMapController)?.removeOverlaysByPrefix("poi_marker_")
+
+        // 存储POI结果
+        activePOIMarkers = pois
+
+        // 添加新标记（最多50个）
+        for poi in pois.prefix(SectorSearchConstants.MAX_POI_COUNT) {
+            mapController?.addMarker(
+                id: "poi_marker_\(poi.id)",
+                at: poi.coordinate,
+                icon: .poi
+            )
+        }
+    }
+
+    /// 清除扇形两翼和POI标记
+    func clearSector() {
+        mapController?.removeOverlay(id: "sector_left_wing")
+        mapController?.removeOverlay(id: "sector_right_wing")
+
+        // 清除POI标记
+        (mapController as? GaodeMapController)?.removeOverlaysByPrefix("poi_marker_")
+        activePOIMarkers = []
+        sectorSearchMessage = nil
+    }
+
+    // MARK: - Phase 3: 十字准心模式
+
+    /// 进入十字准心模式
+    /// - Parameter poi: 来自搜索结果的POI
+    func enterCrosshairMode(poi: POIResult) {
+        crosshairPOIName = poi.name
+        crosshairPOIAddress = poi.address
+        isCrosshairMode = true
+
+        // 移动相机到POI位置
+        mapController?.moveCamera(to: poi.coordinate, zoom: 16, animated: true)
+    }
+
+    /// 保存十字准心位置
+    /// - Parameters:
+    ///   - caseId: 目标案例ID
+    ///   - pointType: 点位类型
+    ///   - name: 点位名称
+    func saveCrosshairPosition(caseId: Int, pointType: PointType, name: String) {
+        guard let center = mapCenterCoordinate else {
+            errorMessage = "无法获取地图中心位置"
+            return
+        }
+
+        do {
+            let point = try service.createPoint(
+                caseId: caseId,
+                name: name,
+                coordinate: center,
+                pointType: pointType
+            )
+
+            // 添加标记
+            let icon: MarkerIcon = pointType == .origin ? .origin : .destination
+            mapController?.addMarker(id: String(point.id), at: center, icon: icon)
+
+            // 设置当前案例
+            currentCaseId = caseId
+
+            // 退出十字准心模式
+            exitCrosshairMode()
+
+        } catch let error as TrialLimitError {
+            errorMessage = error.message
+        } catch let error as DuplicatePointError {
+            errorMessage = error.message
+        } catch {
+            errorMessage = "保存失败: \(error.localizedDescription)"
+        }
+    }
+
+    /// 退出十字准心模式
+    func exitCrosshairMode() {
+        isCrosshairMode = false
+        crosshairPOIName = ""
+        crosshairPOIAddress = ""
+    }
+
+    // MARK: - Phase 4: 生活圈模式
+
+    /// 激活生活圈模式
+    /// 见 PHASE_V4_SPEC.md 2.1节, ARCHITECTURE.md 10.2节
+    func activateLifeCircle(_ lifeCircle: LifeCircleData) {
+        // 保存当前普通模式状态（用于退出时恢复）
+        savedNormalModeState = (
+            origin: selectedOrigin,
+            destinations: selectedDestinations,
+            connections: connections
+        )
+
+        // 隐藏普通模式罗盘和连线
+        if compassCoordinate != nil {
+            mapController?.removeOverlay(id: "compass")
+        }
+        mapController?.removeAllOverlays()
+        mapController?.removeAllMarkers()
+
+        // 标记进入生活圈模式
+        isInLifeCircleMode = true
+        showConnectionPanel = false
+
+        // 渲染三个不同尺寸的罗盘
+        renderLifeCircleCompasses(lifeCircle)
+
+        // 绘制三角连线
+        drawLifeCircleConnections(lifeCircle)
+    }
+
+    /// 退出生活圈模式，恢复普通模式
+    /// 见 PHASE_V4_SPEC.md 2节退出流程
+    func deactivateLifeCircle() {
+        // 清除生活圈地图元素
+        mapController?.removeOverlay(id: "lc_compass_home")
+        mapController?.removeOverlay(id: "lc_compass_work")
+        mapController?.removeOverlay(id: "lc_compass_entertainment")
+        mapController?.removeOverlay(id: "lc_line_home_work")
+        mapController?.removeOverlay(id: "lc_line_work_entertainment")
+        mapController?.removeOverlay(id: "lc_line_entertainment_home")
+
+        // 退出生活圈模式
+        isInLifeCircleMode = false
+
+        // 恢复普通模式状态
+        if let saved = savedNormalModeState {
+            selectedOrigin = saved.origin
+            selectedDestinations = saved.destinations
+            connections = saved.connections
+            savedNormalModeState = nil
+
+            // 恢复罗盘（如果之前有选中原点）
+            if let origin = saved.origin {
+                renderCompass(at: origin.coordinate)
+            }
+
+            // 恢复连线
+            for (index, conn) in saved.connections.enumerated() {
+                let color = ConnectionColorHelper.getColor(at: index)
+                let style = PolylineStyle(
+                    color: colorToHex(color),
+                    width: 12.0,
+                    isDashed: false
+                )
+                mapController?.addPolyline(
+                    id: "connection_\(conn.destination.id)",
+                    points: [conn.origin.coordinate, conn.destination.coordinate],
+                    style: style
+                )
+            }
+            showConnectionPanel = !saved.connections.isEmpty
+        }
+    }
+
+    /// 渲染生活圈三个不同尺寸的罗盘
+    private func renderLifeCircleCompasses(_ lifeCircle: LifeCircleData) {
+        let compassTypes: [(GeoPoint, LifeCirclePointType, String)] = [
+            (lifeCircle.homePoint, .home, "lc_compass_home"),
+            (lifeCircle.workPoint, .work, "lc_compass_work"),
+            (lifeCircle.entertainmentPoint, .entertainment, "lc_compass_entertainment")
+        ]
+
+        for (point, type, overlayId) in compassTypes {
+            let pixelSize = type.compassPixelSize
+            let compassImage = CompassImageGenerator.generateCompassImage(size: pixelSize)
+            let radius = type.compassRadiusMeters
+
+            mapController?.addGroundOverlay(
+                id: overlayId,
+                center: point.coordinate,
+                image: compassImage,
+                radiusMeters: radius
+            )
+        }
+    }
+
+    /// 绘制生活圈三角连线
+    /// 见 PHASE_V4_SPEC.md 4.2节, ARCHITECTURE.md 10.4节
+    private func drawLifeCircleConnections(_ lifeCircle: LifeCircleData) {
+        // 家→公司（绿色 #00C853）
+        let homeWorkStyle = PolylineStyle(
+            color: LifeCircleConnectionColor.homeToWork,
+            width: 12.0,
+            isDashed: false
+        )
+        mapController?.addPolyline(
+            id: "lc_line_home_work",
+            points: [lifeCircle.homePoint.coordinate, lifeCircle.workPoint.coordinate],
+            style: homeWorkStyle
+        )
+
+        // 公司→日常场所（蓝色 #2196F3）
+        let workEntertainStyle = PolylineStyle(
+            color: LifeCircleConnectionColor.workToEntertainment,
+            width: 12.0,
+            isDashed: false
+        )
+        mapController?.addPolyline(
+            id: "lc_line_work_entertainment",
+            points: [lifeCircle.workPoint.coordinate, lifeCircle.entertainmentPoint.coordinate],
+            style: workEntertainStyle
+        )
+
+        // 日常场所→家（橙色 #FF9800）
+        let entertainHomeStyle = PolylineStyle(
+            color: LifeCircleConnectionColor.entertainmentToHome,
+            width: 12.0,
+            isDashed: false
+        )
+        mapController?.addPolyline(
+            id: "lc_line_entertainment_home",
+            points: [lifeCircle.entertainmentPoint.coordinate, lifeCircle.homePoint.coordinate],
+            style: entertainHomeStyle
+        )
+    }

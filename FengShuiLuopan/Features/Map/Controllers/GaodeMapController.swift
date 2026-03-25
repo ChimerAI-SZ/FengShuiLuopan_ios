@@ -24,6 +24,9 @@ class GaodeMapController: NSObject, MapControllerProtocol {
     /// 连线缓存 (id -> MAPolyline)
     private var polylines: [String: MAPolyline] = [:]
 
+    /// 连线样式缓存 (id -> PolylineStyle)
+    private var polylineStyles: [String: PolylineStyle] = [:]
+
     // MARK: - Callbacks
 
     var onMapTap: ((WGS84Coordinate) -> Void)?
@@ -179,6 +182,7 @@ class GaodeMapController: NSObject, MapControllerProtocol {
 
         let polyline = MAPolyline(coordinates: &coordinates, count: UInt(coordinates.count))
         polylines[id] = polyline
+        polylineStyles[id] = style  // 保存样式
         mapView.add(polyline)
 
         return id
@@ -192,6 +196,7 @@ class GaodeMapController: NSObject, MapControllerProtocol {
         if let polyline = polylines[id] {
             mapView.remove(polyline)
             polylines.removeValue(forKey: id)
+            polylineStyles.removeValue(forKey: id)
         }
     }
 
@@ -200,6 +205,36 @@ class GaodeMapController: NSObject, MapControllerProtocol {
         mapView.removeOverlays(Array(polylines.values))
         overlays.removeAll()
         polylines.removeAll()
+        polylineStyles.removeAll()
+    }
+
+    /// 按前缀批量移除覆盖层（用于批量清除POI标记）
+    func removeOverlaysByPrefix(_ prefix: String) {
+        // 移除overlays中前缀匹配的项
+        let overlayKeys = overlays.keys.filter { $0.hasPrefix(prefix) }
+        for key in overlayKeys {
+            if let overlay = overlays[key] {
+                mapView.remove(overlay)
+            }
+            overlays.removeValue(forKey: key)
+        }
+        // 移除polylines中前缀匹配的项
+        let polylineKeys = polylines.keys.filter { $0.hasPrefix(prefix) }
+        for key in polylineKeys {
+            if let polyline = polylines[key] {
+                mapView.remove(polyline)
+            }
+            polylines.removeValue(forKey: key)
+            polylineStyles.removeValue(forKey: key)
+        }
+        // 移除markers中前缀匹配的项
+        let markerKeys = markers.keys.filter { $0.hasPrefix(prefix) }
+        for key in markerKeys {
+            if let marker = markers[key] {
+                mapView.removeAnnotation(marker)
+            }
+            markers.removeValue(forKey: key)
+        }
     }
 
     // MARK: - Geocoding (V4+)
@@ -314,8 +349,28 @@ extension GaodeMapController: MAMapViewDelegate {
             guard let renderer = MAPolylineRenderer(polyline: polyline) else {
                 return nil
             }
-            renderer.strokeColor = UIColor.blue
-            renderer.lineWidth = 3.0
+
+            // 从缓存中查找该polyline对应的ID和样式
+            if let polylineId = polylines.first(where: { $0.value === polyline })?.key,
+               let style = polylineStyles[polylineId] {
+                // 使用保存的样式
+                let r = CGFloat((style.color >> 16) & 0xFF) / 255.0
+                let g = CGFloat((style.color >> 8) & 0xFF) / 255.0
+                let b = CGFloat(style.color & 0xFF) / 255.0
+                let a = CGFloat((style.color >> 24) & 0xFF) / 255.0
+                renderer.strokeColor = UIColor(red: r, green: g, blue: b, alpha: a)
+                renderer.lineWidth = CGFloat(style.width)
+
+                // 支持虚线渲染
+                if style.isDashed {
+                    renderer.lineDashType = .dash
+                }
+            } else {
+                // 默认样式：蓝色实线
+                renderer.strokeColor = UIColor.blue
+                renderer.lineWidth = 3.0
+            }
+
             return renderer
         }
 

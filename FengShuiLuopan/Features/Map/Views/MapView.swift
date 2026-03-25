@@ -9,7 +9,7 @@ import AMapFoundationKit
 /// 地图视图（SwiftUI）
 struct MapView: View {
 
-    @StateObject private var viewModel = MapViewModel()
+    @ObservedObject var viewModel: MapViewModel
     @StateObject private var locationService = LocationService()
     @State private var mapController: GaodeMapController?
 
@@ -36,6 +36,19 @@ struct MapView: View {
 
             // 屏幕中心十字指示
             CrosshairView()
+
+            // 生活圈横幅（Phase 4）— 显示在地图顶部
+            if viewModel.isInLifeCircleMode {
+                VStack {
+                    LifeCircleBanner(
+                        lifeCircleViewModel: viewModel.lifeCircleViewModel,
+                        mapViewModel: viewModel
+                    )
+                    .padding(.top, 44)  // 留出状态栏高度
+                    Spacer()
+                }
+                .edgesIgnoringSafeArea(.top)
+            }
 
             // 解锁模式下的罗盘（屏幕中心）
             if viewModel.compassMode == .unlocked {
@@ -97,6 +110,37 @@ struct MapView: View {
                         ControlButton(icon: "trash", backgroundColor: .red) {
                             viewModel.clearAll()
                         }
+
+                        // 扇形搜索按钮（Phase 3）
+                        ControlButton(icon: "circle.dashed", backgroundColor: .purple) {
+                            viewModel.sectorSearchViewModel.restoreLastConfig()
+                            viewModel.showSectorSearch = true
+                        }
+
+                        // 更多菜单按钮（Phase 4 + Phase 5）
+                        Menu {
+                            Button(action: {
+                                viewModel.showLifeCircleWizard = true
+                            }) {
+                                Label("生活圈模式", systemImage: "house.circle")
+                            }
+
+                            Divider()
+
+                            Button(action: {
+                                viewModel.showSettings = true
+                            }) {
+                                Label("设置", systemImage: "gear")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                                .foregroundColor(.white)
+                                .font(.system(size: 20))
+                                .frame(width: 50, height: 50)
+                                .background(Color.gray.opacity(0.8))
+                                .clipShape(Circle())
+                                .shadow(radius: 4)
+                        }
                     }
                     .padding()
                 }
@@ -104,7 +148,7 @@ struct MapView: View {
             }
 
             // 连线信息面板（Phase 2：支持多连线）
-            if viewModel.showConnectionPanel, !viewModel.connections.isEmpty {
+            if viewModel.showConnectionPanel, !viewModel.connections.isEmpty, !viewModel.isCrosshairMode {
                 VStack {
                     Spacer()
                     MultiConnectionInfoPanel(
@@ -114,6 +158,41 @@ struct MapView: View {
                         }
                     )
                     .padding()
+                }
+            }
+
+            // 十字准心保存面板（Phase 3）
+            if viewModel.isCrosshairMode {
+                VStack {
+                    Spacer()
+                    CrosshairSavePanel(
+                        mapViewModel: viewModel,
+                        onSave: {
+                            // 保存成功后自动退出
+                        },
+                        onCancel: {
+                            viewModel.exitCrosshairMode()
+                        }
+                    )
+                }
+            }
+
+            // 扇形搜索结果消息（Phase 3）
+            if let message = viewModel.sectorSearchMessage {
+                VStack {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundColor(.white)
+                        .padding(8)
+                        .background(Color.blue.opacity(0.8))
+                        .cornerRadius(8)
+                        .padding(.top, 50)
+                    Spacer()
+                }
+                .onAppear {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        viewModel.sectorSearchMessage = nil
+                    }
                 }
             }
 
@@ -212,6 +291,31 @@ struct MapView: View {
                 },
                 origins: viewModel.getOriginsForCurrentCase()
             )
+        }
+        .sheet(isPresented: $viewModel.showSectorSearch) {
+            SectorSearchView(
+                viewModel: viewModel.sectorSearchViewModel,
+                mapViewModel: viewModel,
+                poiService: viewModel.poiSearchService
+            )
+        }
+        // 生活圈向导：多选原点（Phase 4）
+        .sheet(isPresented: $viewModel.showLifeCircleWizard) {
+            LifeCircleOriginSelectorView(
+                lifeCircleViewModel: viewModel.lifeCircleViewModel,
+                mapViewModel: viewModel
+            )
+        }
+        // 生活圈角色分配对话框（Phase 4）
+        .sheet(isPresented: $viewModel.lifeCircleViewModel.showRoleAssignment) {
+            RoleAssignmentDialog(
+                lifeCircleViewModel: viewModel.lifeCircleViewModel,
+                mapViewModel: viewModel
+            )
+        }
+        // 设置页面（Phase 5）
+        .sheet(isPresented: $viewModel.showSettings) {
+            SettingsView()
         }
     }
 
@@ -435,6 +539,6 @@ struct InfoRow: View {
 
 struct MapView_Previews: PreviewProvider {
     static var previews: some View {
-        MapView()
+        MapView(viewModel: MapViewModel())
     }
 }
