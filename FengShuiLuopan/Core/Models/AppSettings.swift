@@ -4,14 +4,6 @@
 
 import Foundation
 
-// MARK: - MapSDKType
-
-/// 地图SDK类型
-enum MapSDKType: String {
-    case gaode  // 高德地图
-    case google // Google Maps（V5+）
-}
-
 // MARK: - MapSDKPreference
 
 /// 地图SDK偏好设置
@@ -80,7 +72,7 @@ struct OnboardingStep: Identifiable {
         OnboardingStep(
             id: 1,
             title: "GPS权限说明",
-            description: "应用需要获取您的位置信息\n用于显示GPS原点罗盘和精准测量方位\n请在弹出权限请求时选择"允许"",
+            description: "应用需要获取您的位置信息\n用于显示GPS原点罗盘和精准测量方位\n请在弹出权限请求时选择\"允许\"",
             iconName: "location.circle.fill",
             imageName: nil
         ),
@@ -94,21 +86,21 @@ struct OnboardingStep: Identifiable {
         OnboardingStep(
             id: 3,
             title: "添加原点与终点",
-            description: "• 点击右侧"+"按钮，选择添加原点或终点\n• 原点为罗盘中心，显示24山罗盘\n• 终点为测量目标，自动显示连线信息\n• 每条连线显示：方位角、24山、距离",
+            description: "• 点击右侧\"+\"按钮，选择添加原点或终点\n• 原点为罗盘中心，显示24山罗盘\n• 终点为测量目标，自动显示连线信息\n• 每条连线显示：方位角、24山、距离",
             iconName: "mappin.and.ellipse",
             imageName: nil
         ),
         OnboardingStep(
             id: 4,
             title: "案例管理",
-            description: "• 底部"堪舆管理"Tab管理多个案例\n• 每个案例可独立管理原点和终点\n• 支持对多个风水项目同时跟踪\n• 扇形搜索可在指定方位查找POI",
+            description: "• 底部\"堪舆管理\"Tab管理多个案例\n• 每个案例可独立管理原点和终点\n• 支持对多个风水项目同时跟踪\n• 扇形搜索可在指定方位查找POI",
             iconName: "folder.circle.fill",
             imageName: nil
         ),
         OnboardingStep(
             id: 5,
             title: "开始使用",
-            description: "一切就绪！\n\n您可以在"说明"Tab中随时查看\n完整的使用指南和常见问题解答",
+            description: "一切就绪！\n\n您可以在\"说明\"Tab中随时查看\n完整的使用指南和常见问题解答",
             iconName: "checkmark.circle.fill",
             imageName: nil
         )

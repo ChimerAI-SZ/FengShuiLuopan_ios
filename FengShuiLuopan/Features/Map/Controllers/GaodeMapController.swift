@@ -360,11 +360,6 @@ extension GaodeMapController: MAMapViewDelegate {
                 let a = CGFloat((style.color >> 24) & 0xFF) / 255.0
                 renderer.strokeColor = UIColor(red: r, green: g, blue: b, alpha: a)
                 renderer.lineWidth = CGFloat(style.width)
-
-                // 支持虚线渲染
-                if style.isDashed {
-                    renderer.lineDashType = .dash
-                }
             } else {
                 // 默认样式：蓝色实线
                 renderer.strokeColor = UIColor.blue

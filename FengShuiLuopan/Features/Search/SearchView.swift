@@ -107,7 +107,7 @@ struct SearchView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 16)
             } else {
-                Text("未找到与"\(viewModel.searchText)"相关的地点")
+                Text("未找到与\"\(viewModel.searchText)\"相关的地点")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)

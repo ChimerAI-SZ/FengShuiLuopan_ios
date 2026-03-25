@@ -84,6 +84,9 @@ class MapViewModel: ObservableObject {
     /// 显示生活圈向导（多选原点）
     @Published var showLifeCircleWizard: Bool = false
 
+    /// 显示生活圈角色分配对话框（中间变量，用于sheet binding）
+    @Published var showRoleAssignmentSheet: Bool = false
+
     /// 生活圈激活前保存的普通模式状态（用于恢复）
     private var savedNormalModeState: (origin: GeoPoint?, destinations: [GeoPoint], connections: [Connection])? = nil
 
@@ -105,6 +108,14 @@ class MapViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] message in
                 self?.sectorSearchMessage = message
+            }
+            .store(in: &cancellables)
+
+        // 监听生活圈角色分配弹窗状态
+        lifeCircleViewModel.$showRoleAssignment
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isShown in
+                self?.showRoleAssignmentSheet = isShown
             }
             .store(in: &cancellables)
     }

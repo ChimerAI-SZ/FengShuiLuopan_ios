@@ -109,7 +109,7 @@ struct HelpView: View {
                 icon: "folder.badge.plus",
                 iconColor: .indigo,
                 title: "案例管理",
-                detail: "底部"堪舆管理"Tab创建和管理多个案例；每个案例独立存储原点和终点；支持多项目并行跟踪"
+                detail: "底部\"堪舆管理\"Tab创建和管理多个案例；每个案例独立存储原点和终点；支持多项目并行跟踪"
             )
             helpRow(
                 icon: "person.2",
@@ -127,19 +127,19 @@ struct HelpView: View {
                 icon: "magnifyingglass.circle",
                 iconColor: .blue,
                 title: "POI搜索",
-                detail: "底部"搜索"Tab可按关键词搜索周边兴趣点，支持按24山方位过滤结果"
+                detail: "底部\"搜索\"Tab可按关键词搜索周边兴趣点，支持按24山方位过滤结果"
             )
             helpRow(
                 icon: "scope",
                 iconColor: .teal,
                 title: "十字准心选点",
-                detail: "在搜索结果中点击"在地图标记"，进入十字准心模式，滑动地图精准定位并保存为原点或终点"
+                detail: "在搜索结果中点击\"在地图标记\"，进入十字准心模式，滑动地图精准定位并保存为原点或终点"
             )
             helpRow(
                 icon: "house.circle",
                 iconColor: .purple,
                 title: "生活圈模式",
-                detail: "点击右侧"…"更多菜单，选择"生活圈模式"；选择3个原点分别代表家/公司/日常场所，自动绘制三角连线"
+                detail: "点击右侧\"…\"更多菜单，选择\"生活圈模式\"；选择3个原点分别代表家/公司/日常场所，自动绘制三角连线"
             )
         } header: {
             Label("高级功能", systemImage: "wand.and.stars")
@@ -151,7 +151,7 @@ struct HelpView: View {
         Section {
             faqRow(
                 question: "如何添加多个原点？",
-                answer: "在"堪舆管理"中切换到对应案例，然后点击地图右侧红色图钉按钮（原点按钮），可添加第2个原点。每个案例最多支持2个用户自定义原点（另有1个GPS自动原点）。"
+                answer: "在\"堪舆管理\"中切换到对应案例，然后点击地图右侧红色图钉按钮（原点按钮），可添加第2个原点。每个案例最多支持2个用户自定义原点（另有1个GPS自动原点）。"
             )
             faqRow(
                 question: "什么是24山？",

@@ -307,7 +307,7 @@ struct MapView: View {
             )
         }
         // 生活圈角色分配对话框（Phase 4）
-        .sheet(isPresented: $viewModel.lifeCircleViewModel.showRoleAssignment) {
+        .sheet(isPresented: $viewModel.showRoleAssignmentSheet) {
             RoleAssignmentDialog(
                 lifeCircleViewModel: viewModel.lifeCircleViewModel,
                 mapViewModel: viewModel

@@ -57,8 +57,6 @@ class POISearchService: NSObject {
             longitude: CGFloat(gcj.longitude)
         )
         request.radius = Int(radiusMeters)
-        request.requireExtension = true
-        request.sortsBy = .distance  // 按距离排序
 
         return try await withCheckedThrowingContinuation { continuation in
             self.pendingContinuation = continuation
@@ -76,8 +74,6 @@ class POISearchService: NSObject {
 
         let request = AMapPOIKeywordsSearchRequest()
         request.keywords = keyword
-        request.requireExtension = true
-        request.sortsBy = .distance
 
         return try await withCheckedThrowingContinuation { continuation in
             self.pendingContinuation = continuation
