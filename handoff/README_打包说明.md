@@ -62,6 +62,14 @@
 DEVELOPMENT_TEAM="U459WDD7N6"   # 你的 Team ID
 ```
 
+脚本会把导出配置写到 `build/ExportOptions_AppStore.generated.plist`，不会修改仓库中的模板文件。
+
+也可以不改文件，直接在运行时传入：
+
+```bash
+DEVELOPMENT_TEAM="U459WDD7N6" ./handoff/build_ipa.sh
+```
+
 ---
 
 ## 步骤 3：运行脚本
@@ -86,6 +94,7 @@ DEVELOPMENT_TEAM="U459WDD7N6"   # 你的 Team ID
    - 安装 CocoaPods 依赖
    - 构建 Archive
    - 导出 IPA 文件
+   - 自动向 Xcode 请求下载或更新签名所需的描述文件
 
 5. 等待完成（通常需要 5-10 分钟）
 
@@ -140,10 +149,11 @@ sudo gem install cocoapods
 **可能原因：**
 - Team ID 填写错误
 - 你的 Apple 账号没有有效的开发者证书
+- 当前 Mac 上的 Xcode 没有登录对应 Apple ID
 
 **解决方案：**
 1. 确认 Team ID 正确
-2. 在 Xcode 中手动打开项目，让 Xcode 自动配置签名
+2. 打开 Xcode，确认 `Settings -> Accounts` 已登录对应 Apple ID
 3. 重新运行脚本
 
 ### Q4: 上传到 TestFlight 后，App Store Connect 显示"需要合规信息"
@@ -171,6 +181,7 @@ sudo gem install cocoapods
 3. xcodebuild archive
    └─ 编译并生成 .xcarchive 文件
    └─ 使用你的 Team ID 进行自动签名
+   └─ 允许 Xcode 自动下载或更新描述文件
 
 4. xcodebuild -exportArchive
    └─ 从 .xcarchive 导出 IPA 文件
