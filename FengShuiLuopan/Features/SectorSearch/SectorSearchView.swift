@@ -253,7 +253,10 @@ struct SectorSearchView: View {
                 Task {
                     await viewModel.apply(mapViewModel: mapViewModel, poiService: poiService)
                     await MainActor.run {
-                        dismiss()
+                        // 只在没有错误时才关闭 Sheet
+                        if viewModel.errorMessage == nil {
+                            dismiss()
+                        }
                     }
                 }
             } label: {

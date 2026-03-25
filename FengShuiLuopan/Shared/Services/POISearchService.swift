@@ -9,11 +9,15 @@ import AMapSearchKit
 enum POISearchError: LocalizedError {
     case searchFailed(String)
     case emptyResponse
+    case cancelled
+    case timeout
 
     var errorDescription: String? {
         switch self {
         case .searchFailed(let reason): return "搜索失败：\(reason)"
         case .emptyResponse: return "搜索返回空结果"
+        case .cancelled: return "搜索已取消"
+        case .timeout: return "搜索超时（5秒）"
         }
     }
 }
@@ -27,6 +31,9 @@ class POISearchService: NSObject {
 
     /// 存储待完成的continuation（一次只有一个搜索）
     private var pendingContinuation: CheckedContinuation<[POIResult], Error>?
+
+    /// 当前请求的 UUID（用于超时检查）
+    private var currentRequestId: UUID?
 
     /// 原点坐标（用于计算POI的bearing和distance）
     private var searchOrigin: WGS84Coordinate?
@@ -46,6 +53,12 @@ class POISearchService: NSObject {
     ///   - radiusMeters: 搜索半径（米）
     /// - Returns: POI结果数组
     func searchPOIAround(keyword: String, center: WGS84Coordinate, radiusMeters: Double) async throws -> [POIResult] {
+        // 取消旧请求
+        if let old = pendingContinuation {
+            pendingContinuation = nil
+            old.resume(throwing: POISearchError.cancelled)
+        }
+
         // WGS-84 → GCJ-02
         let gcj = CoordinateConverter.wgs84ToGcj02(center)
         self.searchOrigin = center
@@ -58,9 +71,22 @@ class POISearchService: NSObject {
         )
         request.radius = Int(radiusMeters)
 
+        let requestId = UUID()
+        self.currentRequestId = requestId
+
         return try await withCheckedThrowingContinuation { continuation in
             self.pendingContinuation = continuation
             self.searcher.aMapPOIAroundSearch(request)
+
+            // 设置 5 秒超时
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard let self = self, self.currentRequestId == requestId,
+                      let c = self.pendingContinuation else { return }
+                self.pendingContinuation = nil
+                self.currentRequestId = nil
+                c.resume(throwing: POISearchError.timeout)
+            }
         }
     }
 
@@ -70,14 +96,33 @@ class POISearchService: NSObject {
     /// - Parameter keyword: 搜索关键词
     /// - Returns: POI结果数组
     func searchPOIKeyword(keyword: String) async throws -> [POIResult] {
+        // 取消旧请求
+        if let old = pendingContinuation {
+            pendingContinuation = nil
+            old.resume(throwing: POISearchError.cancelled)
+        }
+
         self.searchOrigin = nil  // 关键词搜索不需要原点
 
         let request = AMapPOIKeywordsSearchRequest()
         request.keywords = keyword
 
+        let requestId = UUID()
+        self.currentRequestId = requestId
+
         return try await withCheckedThrowingContinuation { continuation in
             self.pendingContinuation = continuation
             self.searcher.aMapPOIKeywordsSearch(request)
+
+            // 设置 5 秒超时
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                guard let self = self, self.currentRequestId == requestId,
+                      let c = self.pendingContinuation else { return }
+                self.pendingContinuation = nil
+                self.currentRequestId = nil
+                c.resume(throwing: POISearchError.timeout)
+            }
         }
     }
 
@@ -173,6 +218,7 @@ extension POISearchService: AMapSearchDelegate {
     func onPOISearchDone(_ request: AMapPOISearchBaseRequest!, response: AMapPOISearchResponse!) {
         guard let continuation = pendingContinuation else { return }
         pendingContinuation = nil
+        currentRequestId = nil
 
         if let pois = response?.pois, !pois.isEmpty {
             let results = convertPOIs(pois, origin: searchOrigin)
@@ -186,6 +232,7 @@ extension POISearchService: AMapSearchDelegate {
     func aMapSearchRequest(_ request: Any!, didFailWithError error: Error!) {
         guard let continuation = pendingContinuation else { return }
         pendingContinuation = nil
+        currentRequestId = nil
         continuation.resume(throwing: POISearchError.searchFailed(error?.localizedDescription ?? "未知错误"))
     }
 }

@@ -26,6 +26,7 @@ class SearchViewModel: ObservableObject {
 
     private let poiService: POISearchService
     private var cancellables = Set<AnyCancellable>()
+    private var searchTask: Task<Void, Never>?
 
     // MARK: - Initialization
 
@@ -43,11 +44,15 @@ class SearchViewModel: ObservableObject {
             .removeDuplicates()
             .sink { [weak self] text in
                 guard let self = self else { return }
+
+                // 取消旧搜索 Task
+                self.searchTask?.cancel()
+
                 if text.trimmingCharacters(in: .whitespaces).isEmpty {
                     self.searchResults = []
                     self.isSearching = false
                 } else {
-                    Task {
+                    self.searchTask = Task {
                         await self.performSearch(keyword: text)
                     }
                 }
@@ -61,16 +66,27 @@ class SearchViewModel: ObservableObject {
     /// - Parameter keyword: 搜索关键词
     @MainActor
     private func performSearch(keyword: String) async {
+        // 检查 Task 是否已被取消
+        guard !Task.isCancelled else { return }
+
         isSearching = true
         errorMessage = nil
 
         do {
             let results = try await poiService.searchPOIKeyword(keyword: keyword)
+
+            // 再次检查是否被取消
+            guard !Task.isCancelled else { return }
+
             // 只有当搜索关键词与当前输入一致时才更新结果（避免竞态条件）
             if keyword == searchText.trimmingCharacters(in: .whitespaces) || searchText.contains(keyword) {
                 searchResults = results
             }
         } catch {
+            // 取消错误不需要显示
+            if let poiError = error as? POISearchError, case .cancelled = poiError {
+                return
+            }
             errorMessage = "搜索失败：\(error.localizedDescription)"
             searchResults = []
         }
