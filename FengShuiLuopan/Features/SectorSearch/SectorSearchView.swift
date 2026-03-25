@@ -254,7 +254,7 @@ struct SectorSearchView: View {
                     await viewModel.apply(mapViewModel: mapViewModel, poiService: poiService)
                     await MainActor.run {
                         // 只在没有错误时才关闭 Sheet
-                        if viewModel.errorMessage == nil {
+                        if viewModel.searchResultMessage == nil || !viewModel.searchResultMessage!.contains("搜索失败") {
                             dismiss()
                         }
                     }
