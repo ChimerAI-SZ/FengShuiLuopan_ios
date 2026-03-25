@@ -12,7 +12,9 @@ struct MainContentView: View {
     @State private var selectedTab: Tab = .map
 
     init() {
-        _searchViewModel = StateObject(wrappedValue: SearchViewModel(poiService: mapViewModel.poiSearchService))
+        let mapVM = MapViewModel()
+        _mapViewModel = StateObject(wrappedValue: mapVM)
+        _searchViewModel = StateObject(wrappedValue: SearchViewModel(poiService: mapVM.poiSearchService))
     }
 
     enum Tab {
