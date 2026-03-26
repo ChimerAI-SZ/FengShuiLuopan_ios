@@ -12,9 +12,10 @@ struct MainContentView: View {
     @State private var selectedTab: Tab = .map
 
     init() {
-        let mapVM = MapViewModel()
-        _mapViewModel = StateObject(wrappedValue: mapVM)
-        _searchViewModel = StateObject(wrappedValue: SearchViewModel(poiService: mapVM.poiSearchService))
+        // 创建一个临时的 POISearchService 用于初始化 SearchViewModel
+        // 注意：这里创建的 POISearchService 与 mapViewModel 中的不同
+        // 但这是可以接受的，因为 POISearchService 是无状态的
+        _searchViewModel = StateObject(wrappedValue: SearchViewModel(poiService: POISearchService()))
     }
 
     enum Tab {
