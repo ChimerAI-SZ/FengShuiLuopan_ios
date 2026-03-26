@@ -28,6 +28,7 @@ enum POISearchError: LocalizedError {
 class POISearchService: NSObject {
 
     private let searcher: AMapSearchAPI
+    private let continuationLock = NSLock()
 
     /// 存储待完成的continuation（一次只有一个搜索）
     private var pendingContinuation: CheckedContinuation<[POIResult], Error>?
@@ -75,16 +76,26 @@ class POISearchService: NSObject {
         self.currentRequestId = requestId
 
         return try await withCheckedThrowingContinuation { continuation in
+            self.continuationLock.lock()
             self.pendingContinuation = continuation
+            self.continuationLock.unlock()
+
             self.searcher.aMapPOIAroundSearch(request)
 
             // 设置 5 秒超时
             Task { [weak self] in
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
-                guard let self = self, self.currentRequestId == requestId,
-                      let c = self.pendingContinuation else { return }
+                guard let self = self, self.currentRequestId == requestId else { return }
+
+                self.continuationLock.lock()
+                guard let c = self.pendingContinuation else {
+                    self.continuationLock.unlock()
+                    return
+                }
                 self.pendingContinuation = nil
                 self.currentRequestId = nil
+                self.continuationLock.unlock()
+
                 c.resume(throwing: POISearchError.timeout)
             }
         }
@@ -97,9 +108,13 @@ class POISearchService: NSObject {
     /// - Returns: POI结果数组
     func searchPOIKeyword(keyword: String) async throws -> [POIResult] {
         // 取消旧请求
+        self.continuationLock.lock()
         if let old = pendingContinuation {
             pendingContinuation = nil
+            self.continuationLock.unlock()
             old.resume(throwing: POISearchError.cancelled)
+        } else {
+            self.continuationLock.unlock()
         }
 
         self.searchOrigin = nil  // 关键词搜索不需要原点
@@ -111,16 +126,26 @@ class POISearchService: NSObject {
         self.currentRequestId = requestId
 
         return try await withCheckedThrowingContinuation { continuation in
+            self.continuationLock.lock()
             self.pendingContinuation = continuation
+            self.continuationLock.unlock()
+
             self.searcher.aMapPOIKeywordsSearch(request)
 
             // 设置 5 秒超时
             Task { [weak self] in
                 try? await Task.sleep(nanoseconds: 5_000_000_000)
-                guard let self = self, self.currentRequestId == requestId,
-                      let c = self.pendingContinuation else { return }
+                guard let self = self, self.currentRequestId == requestId else { return }
+
+                self.continuationLock.lock()
+                guard let c = self.pendingContinuation else {
+                    self.continuationLock.unlock()
+                    return
+                }
                 self.pendingContinuation = nil
                 self.currentRequestId = nil
+                self.continuationLock.unlock()
+
                 c.resume(throwing: POISearchError.timeout)
             }
         }
@@ -216,9 +241,14 @@ extension POISearchService: AMapSearchDelegate {
 
     /// POI搜索回调（圆形和关键词均通过此回调返回）
     func onPOISearchDone(_ request: AMapPOISearchBaseRequest!, response: AMapPOISearchResponse!) {
-        guard let continuation = pendingContinuation else { return }
+        self.continuationLock.lock()
+        guard let continuation = pendingContinuation else {
+            self.continuationLock.unlock()
+            return
+        }
         pendingContinuation = nil
         currentRequestId = nil
+        self.continuationLock.unlock()
 
         if let pois = response?.pois, !pois.isEmpty {
             let results = convertPOIs(pois, origin: searchOrigin)
@@ -230,9 +260,15 @@ extension POISearchService: AMapSearchDelegate {
 
     /// 搜索请求失败回调
     func aMapSearchRequest(_ request: Any!, didFailWithError error: Error!) {
-        guard let continuation = pendingContinuation else { return }
+        self.continuationLock.lock()
+        guard let continuation = pendingContinuation else {
+            self.continuationLock.unlock()
+            return
+        }
         pendingContinuation = nil
         currentRequestId = nil
+        self.continuationLock.unlock()
+
         continuation.resume(throwing: POISearchError.searchFailed(error?.localizedDescription ?? "未知错误"))
     }
 }

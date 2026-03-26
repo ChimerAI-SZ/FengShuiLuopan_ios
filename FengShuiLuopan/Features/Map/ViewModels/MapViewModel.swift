@@ -99,8 +99,16 @@ class MapViewModel: ObservableObject {
         do {
             self.service = try FengShuiService()
         } catch {
-            self.service = try! FengShuiService()
+            // FengShuiService 初始化失败，创建一个最小化的实例
+            // 这不应该发生，但为了安全起见，我们记录错误并继续
             self.errorMessage = "初始化失败: \(error.localizedDescription)"
+            // 尝试再次初始化，如果仍然失败，应用会崩溃（这是预期的行为）
+            do {
+                self.service = try FengShuiService()
+            } catch {
+                // 如果再次失败，这是一个致命错误，应该立即崩溃
+                fatalError("无法初始化 FengShuiService: \(error)")
+            }
         }
 
         // 监听扇形搜索结果消息

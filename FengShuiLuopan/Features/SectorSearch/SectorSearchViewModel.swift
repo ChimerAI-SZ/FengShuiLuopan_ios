@@ -52,6 +52,7 @@ class SectorSearchViewModel: ObservableObject {
     ///   - poiService: POI搜索服务
     func apply(mapViewModel: MapViewModel, poiService: POISearchService) async {
         guard config.isDistanceValid else { return }
+        guard !Task.isCancelled else { return }
 
         // 保存配置（规格1.6：点击绘制时保存）
         lastSavedConfig = config
@@ -84,6 +85,9 @@ class SectorSearchViewModel: ObservableObject {
                     center: mapViewModel.sectorOrigin,
                     radiusMeters: searchRadius
                 )
+
+                // 检查 Task 是否被取消
+                guard !Task.isCancelled else { return }
 
                 // 扇形过滤
                 let sectorPOIs = poiService.filterPOIsInSector(
